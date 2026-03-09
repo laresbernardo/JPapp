@@ -23,8 +23,273 @@ import {
   CloudRain,
   Thermometer,
   Languages,
-  BookOpen
+  BookOpen,
+  Search,
+  Play,
+  Pause,
+  FastForward,
+  Rewind,
+  Headphones,
+  Loader2,
+  Settings2
 } from 'lucide-react';
+
+const AudioGuide = ({ placeName, apiKey, cachedData, onCacheUpdate }) => {
+  const [status, setStatus] = useState(cachedData ? 'done' : 'idle');
+  const [audioUrl, setAudioUrl] = useState(cachedData?.audioUrl || null);
+  const [guideText, setGuideText] = useState(cachedData?.text || '');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isAutoPlay, setIsAutoPlay] = useState(false);
+
+  const audioRef = React.useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const formatTime = (time) => {
+    if (!time || isNaN(time)) return "0:00";
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setProgress(audioRef.current.currentTime);
+      setDuration(audioRef.current.duration || 0);
+    }
+  };
+
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) audioRef.current.pause();
+      else audioRef.current.play();
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const skip = (amount) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.min(Math.max(audioRef.current.currentTime + amount, 0), duration);
+    }
+  };
+
+  const handleSeek = (e) => {
+    if (audioRef.current) {
+      const newTime = (e.target.value / 100) * duration;
+      audioRef.current.currentTime = newTime;
+      setProgress(newTime);
+    }
+  };
+
+  const generateContent = async (mode = 'audio') => {
+    try {
+      setStatus('generating_text');
+      setErrorMsg('');
+
+      if (!apiKey || apiKey.trim() === '') {
+        throw new Error('Please enter your Google API Key in the Global Settings (Menu).');
+      }
+
+      const prompt = `Write an engaging, 300-word audio-guide script about ${placeName} in Japan. Include history, interesting curiosities, and context. Make it sound like a friendly, knowledgeable tour guide speaking to tourists. Do not include any text formatting like * or #, just use plain, readable text that flows well when spoken aloud.`;
+
+      const modelsToTry = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
+      let text = '';
+      let success = false;
+      let lastError = '';
+
+      for (const model of modelsToTry) {
+        if (success) break;
+        try {
+          const textRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }]
+            })
+          });
+
+          if (textRes.ok) {
+            const textData = await textRes.json();
+            if (textData.candidates?.[0]?.content?.parts?.[0]?.text) {
+              text = textData.candidates[0].content.parts[0].text;
+              success = true;
+            } else {
+              lastError = `Gemini (${model}): Malformed response (no text).`;
+            }
+          } else {
+            const errData = await textRes.json();
+            lastError = `Gemini (${model}): ${errData.error?.message || textRes.statusText}`;
+          }
+        } catch (err) {
+          console.warn(`Model ${model} failed, trying next...`, err.message);
+          lastError = err.message;
+        }
+      }
+
+      if (!success) {
+        throw new Error(lastError || 'Failed to generate script with Gemini API. Check your API key.');
+      }
+
+      setGuideText(text);
+
+      if (mode === 'text') {
+        setStatus('done');
+        onCacheUpdate(placeName, { text });
+        return;
+      }
+
+      setStatus('generating_audio');
+
+      const audioRes = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: { text },
+          voice: { languageCode: 'en-US', name: 'en-US-Journey-D' },
+          audioConfig: { audioEncoding: 'MP3' }
+        })
+      });
+
+      if (!audioRes.ok) {
+        const errData = await audioRes.json();
+        // Fallback to standard voice if premium/Journey fails
+        if (errData.error?.message?.includes('Journey') || errData.error?.message?.includes('not found')) {
+          const audioResFallback = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              input: { text },
+              voice: { languageCode: 'en-US', name: 'en-US-Standard-D' },
+              audioConfig: { audioEncoding: 'MP3' }
+            })
+          });
+          if (!audioResFallback.ok) {
+            const errDataFb = await audioResFallback.json();
+            throw new Error(errDataFb.error?.message || 'Failed to generate audio with Google Cloud TTS.');
+          }
+          const newUrlFallback = URL.createObjectURL(audioBlobFallback);
+          setAudioUrl(newUrlFallback);
+          setStatus('done');
+          setIsAutoPlay(true);
+          onCacheUpdate(placeName, { text, audioUrl: newUrlFallback });
+          return;
+        }
+        throw new Error(errData.error?.message || 'Failed to generate audio with Google Cloud TTS (Make sure Cloud TTS API is enabled).');
+      }
+
+      const audioData = await audioRes.json();
+      const audioBlob = new Blob([Uint8Array.from(atob(audioData.audioContent), c => c.charCodeAt(0))], { type: 'audio/mp3' });
+      const newUrl = URL.createObjectURL(audioBlob);
+      setAudioUrl(newUrl);
+      setStatus('done');
+      setIsAutoPlay(true);
+      onCacheUpdate(placeName, { text, audioUrl: newUrl });
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(err.message);
+      setStatus('idle');
+    }
+  };
+
+  return (
+    <div className="bg-[var(--color-bg-primary)] rounded-2xl p-4 border border-[var(--color-border-light)]/50 mt-4 overflow-hidden shadow-sm" onClick={(e) => e.stopPropagation()}>
+      <div className="flex justify-between items-center mb-3">
+        <h6 className="flex items-center gap-1.5 font-bold text-[var(--color-accent-pink)] uppercase tracking-widest text-[10px]">
+          <Headphones size={12} /> AI Audio Guide
+        </h6>
+      </div>
+
+      {errorMsg && (
+        <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-xl text-xs font-medium flex items-start gap-2 border border-red-100">
+          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+          <p className="break-words w-full">{errorMsg}</p>
+        </div>
+      )}
+
+      {status === 'idle' && (
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); generateContent('audio'); }}
+            className="w-full py-3 bg-[var(--color-sumi-black)] text-white rounded-xl font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 active:scale-[0.98] shadow-md"
+          >
+            <Headphones size={16} /> Generate Audio Guide
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); generateContent('text'); }}
+            className="w-full py-3 bg-white text-[var(--color-sumi-black)] border border-[var(--color-border-light)] rounded-xl font-bold text-sm hover:bg-neutral-50 transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            <BookOpen size={16} /> Generate Text Only
+          </button>
+        </div>
+      )}
+
+      {(status === 'generating_text' || status === 'generating_audio') && (
+        <div className="w-full py-6 flex flex-col items-center justify-center gap-3 bg-neutral-100 rounded-xl border border-neutral-200 border-dashed">
+          <Loader2 size={24} className="animate-spin text-[var(--color-accent-pink)]" />
+          <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+            {status === 'generating_text' ? 'Writing script...' : 'Recording audio...'}
+          </span>
+        </div>
+      )}
+
+      {status === 'done' && (
+        <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          {guideText && (
+            <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-100 italic text-sm text-[var(--color-sumi-gray)] leading-relaxed relative group">
+              <div className="absolute -top-2 left-4 px-2 bg-white text-[8px] font-bold text-neutral-400 uppercase tracking-widest border border-neutral-100 rounded">Guide Transcript</div>
+              {guideText}
+            </div>
+          )}
+          {audioUrl && (
+            <div className="bg-white rounded-xl border border-[var(--color-border-light)] p-4 shadow-sm" onClick={(e) => e.stopPropagation()}>
+              <audio
+                ref={audioRef}
+                src={audioUrl}
+                autoPlay={isAutoPlay}
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={() => setIsPlaying(false)}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+                onLoadedMetadata={() => {
+                  if (audioRef.current && (duration === 0 || isNaN(duration))) {
+                    setDuration(audioRef.current.duration);
+                  }
+                }}
+              />
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3 w-full">
+                  <span className="text-[10px] tabular-nums font-bold text-neutral-400 w-6 text-right">{formatTime(progress)}</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={duration ? (progress / duration) * 100 : 0}
+                    onChange={handleSeek}
+                    className="flex-1 h-1.5 bg-neutral-200 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-[var(--color-accent-pink)] [&::-webkit-slider-thumb]:rounded-full cursor-pointer touch-none"
+                  />
+                  <span className="text-[10px] tabular-nums font-bold text-neutral-400 w-6 text-left">{formatTime(duration)}</span>
+                </div>
+
+                <div className="flex items-center justify-center gap-8">
+                  <button onClick={() => skip(-15)} className="text-neutral-400 hover:text-[var(--color-sumi-black)] transition-colors active:scale-90">
+                    <Rewind size={20} fill="currentColor" />
+                  </button>
+                  <button onClick={togglePlay} className="w-14 h-14 bg-[var(--color-accent-pink)] text-white rounded-full flex items-center justify-center hover:bg-[var(--color-accent-pink-soft)] hover:text-[var(--color-accent-pink)] transition-all active:scale-95 shadow-md hover:shadow-lg">
+                    {isPlaying ? <Pause size={28} className="fill-current" /> : <Play size={28} className="fill-current ml-1" />}
+                  </button>
+                  <button onClick={() => skip(15)} className="text-neutral-400 hover:text-[var(--color-sumi-black)] transition-colors active:scale-90">
+                    <FastForward size={20} fill="currentColor" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const App = () => {
   const [activePart, setActivePart] = useState(0);
@@ -34,30 +299,79 @@ const App = () => {
   const [weather, setWeather] = useState({});
   const [jpyAmount, setJpyAmount] = useState('1000');
   const [expandedEventId, setExpandedEventId] = useState(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [googleApiKey, setGoogleApiKey] = useState(() => localStorage.getItem('googleApiKey') || '');
+  const [guideCache, setGuideCache] = useState({});
+
+  const handleCacheUpdate = (placeName, data) => {
+    setGuideCache((prev) => ({ ...prev, [placeName]: data }));
+  };
 
   const getEventTypeBanner = (type, activity) => {
-    const images = {
-      food: "https://images.unsplash.com/photo-1553621042-f6e147245754?auto=format&fit=crop&q=80&w=1000",
-      transport: "https://images.unsplash.com/photo-1533415112101-7b3b3a0ccb00?auto=format&fit=crop&q=80&w=1000",
-      hotel: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&q=80&w=1000",
-      sight: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=1000",
-      walk: "https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?auto=format&fit=crop&q=80&w=1000",
-      default: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=1000"
+    const FALLBACK_ID = "1526481280693-3bfa7568e0f3"; // Mt Fuji Verified
+    const CAT_DEFAULTS = {
+      food: "1697652974652-a2336106043b", // Ramen Verified
+      transport: "1534274920174-3ad0b7ff2925", // Shinkansen Verified
+      hotel: "1582719478250-c89cae4dc85b",
+      sight: "1676829940012-4d61ecd20e57", // Kinkaku-ji Verified
+      walk: "1524413840807-0c3cb6fa808d",
+      default: "1526481280693-3bfa7568e0f3"
     };
 
-    if (!activity) return images.default;
+    const getUrl = (id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&q=80&w=1000`;
+
+    if (!activity) return getUrl(CAT_DEFAULTS[type] || CAT_DEFAULTS.default);
 
     const actLower = activity.toLowerCase();
-    if (actLower.includes('haneda') || actLower.includes('airport')) return "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&q=80&w=1000";
-    if (actLower.includes('teamlab')) return "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&q=80&w=1000";
-    if (actLower.includes('shibuya') || actLower.includes('scramble')) return "https://images.unsplash.com/photo-1542051812871-75750865d5eb?auto=format&fit=crop&q=80&w=1000";
-    if (actLower.includes('uji') || actLower.includes('matcha') || actLower.includes('tea')) return "https://images.unsplash.com/photo-1582788325997-6aafff4dc70e?auto=format&fit=crop&q=80&w=1000";
-    if (actLower.includes('fushimi') || actLower.includes('inari') || actLower.includes('shrines')) return "https://images.unsplash.com/photo-1513407030348-c1e6e3681427?auto=format&fit=crop&q=80&w=1000";
-    if (actLower.includes('bamboo') || actLower.includes('arashiyama')) return "https://images.unsplash.com/photo-1510133744874-09698dbdcecd?auto=format&fit=crop&q=80&w=1000";
-    if (actLower.includes('nara') || actLower.includes('deer')) return "https://images.unsplash.com/photo-1506459341490-b184f47dc209?auto=format&fit=crop&q=80&w=1000";
-    if (actLower.includes('castle')) return "https://images.unsplash.com/photo-1545569341-9eb8b30979d9?auto=format&fit=crop&q=80&w=1000";
 
-    return images[type] || images.default;
+    // Verified Iconic IDs (Numerical)
+    if (actLower.includes('haneda') || actLower.includes('airport')) return getUrl("1674725690428-948af1d7f5a1");
+    if (actLower.includes('teamlab')) return getUrl("1593071376160-9881e78495ea");
+    if (actLower.includes('shibuya sky')) return getUrl("1729707397413-d4b10d6a0376");
+    if (actLower.includes('shibuya') || actLower.includes('scramble')) return getUrl("1706631093613-be82889d8a63");
+    if (actLower.includes('senso-ji') || actLower.includes('asakusa')) return getUrl("1706813253696-10ee6332edd3");
+    if (actLower.includes('fushimi') || actLower.includes('inari')) return getUrl("1558862108-daa1be6fda90");
+    if (actLower.includes('bamboo') || actLower.includes('arashiyama')) return getUrl("1632923754832-60642c12a7ed");
+    if (actLower.includes('kinkaku-ji') || actLower.includes('golden pavilion')) return getUrl("1676829940012-4d61ecd20e57");
+    if (actLower.includes('kiyomizu-dera') || actLower.includes('hokan-ji') || actLower.includes('yasaka')) return getUrl("1636089041212-21316c2fba75");
+    if (actLower.includes('nara') || (actLower.includes('deer') && !actLower.includes('giro'))) return getUrl("1592841451220-553d1a8f306f");
+    if (actLower.includes('osaka castle')) return getUrl("1704003671784-ca0a7c7cb4aa");
+    if (actLower.includes('dotonbori') || actLower.includes('glico')) return getUrl("1636589950353-041d4fba544c");
+    if (actLower.includes('akihabara')) return getUrl("1544974918420-a61f5c71a858");
+    if (actLower.includes('ueno')) return getUrl("1553078197116-ae4fd84cbbe8");
+    if (actLower.includes('imperial palace')) return getUrl("1758496519274-8172931b2773");
+    if (actLower.includes('chidorigafuchi') || actLower.includes('moat')) return getUrl("1760708392291-e1658031ee66");
+    if (actLower.includes('gotokuji')) return getUrl("1723708889726-08a3921cc0e6");
+    if (actLower.includes('nijo')) return getUrl("1668551776853-0b81db47e2cf");
+    if (actLower.includes('uji') || actLower.includes('byodo-in')) return getUrl("1752552750561-422ba1237170");
+    if (actLower.includes('meiji jingu')) return getUrl("1720783199805-bf399ed5173c");
+    if (actLower.includes('shinjuku gyoen')) return getUrl("1660519083174-d39af2133902");
+    if (actLower.includes('godzilla')) return getUrl("1748740345094-7b8d8128e147");
+    if (actLower.includes('3d cat') || actLower.includes('shinjuku vision')) return getUrl("1737670060060-5b7d702cced9");
+    if (actLower.includes('gov. building') || actLower.includes('metropolitan')) return getUrl("1705699147926-05813429312a");
+    if (actLower.includes('nakamise')) return getUrl("1769321308975-4c069a352677");
+    if (actLower.includes('fire ramen')) return getUrl("1697652974652-a2336106043b");
+    if (actLower.includes('mochi')) return getUrl("1528699633336-3b0439f17d5c");
+    if (actLower.includes('philosopher')) return getUrl("1542931287-023b922fa89b");
+    if (actLower.includes('nishiki')) return getUrl("1701001909948-8048598fbc92");
+    if (actLower.includes('depachika')) return getUrl("1709515522019-4794fd3568eb");
+    if (actLower.includes('sky building') || actLower.includes('umeda')) return getUrl("1678730184758-7a54022449ee");
+    if (actLower.includes('hiroshima') || actLower.includes('peace memorial')) return getUrl("1658167865945-7e9949fa4d69");
+    if (actLower.includes('miyajima')) return getUrl("1623614864429-8fa811a8d854");
+    if (actLower.includes('gion') || actLower.includes('pontocho') || actLower.includes('geiko')) return getUrl("1534515033467-dd4df1704496");
+    if (actLower.includes('himeji')) return getUrl("1525636127473-251821bc56ab");
+    if (actLower.includes('monkey') || actLower.includes('snow monkey')) return getUrl("1550713898958-3570906a58c4");
+    if (actLower.includes('sushi')) return getUrl("1639019595653-e7395f071c00");
+    if (actLower.includes('yomoide') || actLower.includes('yokocho') || actLower.includes('golden gai')) return getUrl("1715905732164-0acc9dab00d4");
+    if (actLower.includes('tsukiji')) return getUrl("1553621042-f6e147245754");
+    if (actLower.includes('museum')) return getUrl("1723013082670-2ea6bd4f7ffa");
+    if (actLower.includes('nanzen-ji')) return getUrl("1668551776853-0b81db47e2cf");
+    if (actLower.includes('shinkansen')) return getUrl("1534274920174-3ad0b7ff2925");
+    if (actLower.includes('ginza') || actLower.includes('chuo-dori')) return getUrl("1714332257298-b8bff34dbac7");
+    if (actLower.includes('ramen')) return getUrl("1697652974652-a2336106043b");
+
+    return getUrl(CAT_DEFAULTS[type] || CAT_DEFAULTS.default);
   };
 
   const getActivityRecommendations = (activity) => {
@@ -103,6 +417,7 @@ const App = () => {
       "Keage": ["Walk right in the middle of the tracks for the best perspective", "Visit early morning if you want photos without crowds"],
       "Nanzen-ji": ["Climb to the top of the Sanmon gate for a great view", "The brick aqueduct is a very rare and photogenic sight in Kyoto"],
       "Philosopher's": ["Start from Ginkaku-ji and walk down to Nanzen-ji", "Stop by a local cafe along the canal for matcha"],
+      "Hokan-ji": ["Go early (around 5:30am) to capture the Yasaka Pagoda fully empty for photos.", "Sannen-zaka and Ninen-zaka are right next to it, also great for early morning shots."],
       "Kiyomizu-dera": ["Drink from the Otowa Waterfall for longevity, success, or love (choose only one!)", "The sunset view from the observation deck is spectacular"],
       "Miyako Odori": ["No photos allowed during the performance", "The theater is a beautiful example of early Showa architecture"],
       "Nijo Castle": ["Listen to the 'Nightingale floors' that squeak to warn of ninjas", "The gardens are spectacularly illuminated during spring"],
@@ -170,6 +485,50 @@ const App = () => {
       phrases: [
         { en: "Could you take a picture for me?", ro: "Shashin totte moratte mo ii desu ka?", jp: "写真撮ってもらってもいいですか？" },
         { en: "May I take a photo for you?", ro: "Yokattara torimashou ka?", jp: "よかったら撮りましょうか？" }
+      ]
+    },
+    {
+      category: "Emergencies & Health",
+      phrases: [
+        { en: "Help!", ro: "Tasukete!", jp: "助けて！" },
+        { en: "Where is the hospital?", ro: "Byouin wa doko desu ka?", jp: "病院はどこですか？" },
+        { en: "I don't feel well", ro: "Kibun ga warui desu", jp: "気分が悪いです" },
+        { en: "Please call an ambulance", ro: "Kyuukyuusha o yonde kudasai", jp: "救急車を呼んでください" }
+      ]
+    },
+    {
+      category: "Stations & Trains",
+      phrases: [
+        { en: "One ticket, please", ro: "Kippu o ichimai onegaishimasu", jp: "切符を1枚お願いします" },
+        { en: "Which platform is this?", ro: "Nan-ban sen desu ka?", jp: "何番線ですか？" },
+        { en: "Does this stop at [place]?", ro: "Kore wa [Place] ni tomarimasu ka?", jp: "これは [Place] に止まりますか？" }
+      ]
+    },
+    {
+      category: "Hotel & Accommodation",
+      phrases: [
+        { en: "I have a reservation", ro: "Yoyaku shite imasu", jp: "予約しています" },
+        { en: "Check-in, please", ro: "Chekkuin onegaishimasu", jp: "チェックインお願いします" },
+        { en: "Could you keep my luggage?", ro: "Nimotsu o azukatte moraemasu ka?", jp: "荷物を預かってもらえますか？" },
+        { en: "Is breakfast included?", ro: "Choushoku wa tsuite imasu ka?", jp: "朝食はついていますか？" }
+      ]
+    },
+    {
+      category: "Greetings & Chatting",
+      phrases: [
+        { en: "Good morning", ro: "Ohayou gozaimasu", jp: "おはようございます" },
+        { en: "Good evening", ro: "Konbanwa", jp: "こんばんは" },
+        { en: "Nice to meet you", ro: "Hajimemashite", jp: "はじめまして" },
+        { en: "I am from [country]", ro: "[Country] kara kimashita", jp: "[Country] から来ました" }
+      ]
+    },
+    {
+      category: "Convenience Store (Konbini)",
+      phrases: [
+        { en: "Can you heat this up?", ro: "Atatamete moraemasu ka?", jp: "温めてもらえますか？" },
+        { en: "A plastic bag, please", ro: "Fukuro o onegaishimasu", jp: "袋をお願いします" },
+        { en: "I don't need a bag", ro: "Fukuro wa irimasen", jp: "袋はいりません" },
+        { en: "Can I get chopsticks?", ro: "Ohashi o moraemasu ka?", jp: "お箸をもらえますか？" }
       ]
     }
   ];
@@ -346,6 +705,7 @@ const App = () => {
           date: "Thu, Apr 2",
           label: "Day 7: The Philosopher’s Walk",
           events: [
+            { time: "05:30", activity: "Hokan-ji Temple (Yasaka Pagoda)", type: "sight", transportMode: "walk", note: "Arrive around 5:30am ideally to find it fully empty for incredible photos." },
             { time: "08:30", activity: "Keage Incline Sakura", type: "sight", transportMode: "public", note: "Old railway tracks lined with Sakura. Stunning photo spot." },
             { time: "09:30", activity: "Nanzen-ji Temple", type: "sight", transportMode: "walk", note: "Massive Sanmon gate and Roman-style brick aqueduct." },
             { time: "10:30", activity: "Philosopher's Path", type: "walk", transportMode: "walk", note: "Canal lined with hundreds of cherry trees. Quintessential spring walk." },
@@ -455,12 +815,20 @@ const App = () => {
             <p className="text-[10px] font-semibold text-[var(--color-sumi-gray)] uppercase tracking-[0.2em]">Japan 2026</p>
           </div>
         </div>
-        <button
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--color-accent-pink-soft)] transition-all active:scale-95 border border-[var(--color-border-light)] bg-white"
-        >
-          {isMenuOpen ? <X size={20} className="text-[var(--color-sumi-black)]" /> : <Menu size={20} className="text-[var(--color-sumi-black)]" />}
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--color-accent-pink-soft)] transition-all active:scale-95 border border-[var(--color-border-light)] bg-white"
+          >
+            <Search size={20} className="text-[var(--color-sumi-black)]" />
+          </button>
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--color-accent-pink-soft)] transition-all active:scale-95 border border-[var(--color-border-light)] bg-white"
+          >
+            {isMenuOpen ? <X size={20} className="text-[var(--color-sumi-black)]" /> : <Menu size={20} className="text-[var(--color-sumi-black)]" />}
+          </button>
+        </div>
       </header>
 
       {/* Menu Overlay */}
@@ -472,7 +840,11 @@ const App = () => {
               {itineraryData.map((part, idx) => (
                 <button
                   key={idx}
-                  onClick={() => { setActivePart(idx); setIsMenuOpen(false); }}
+                  onClick={() => {
+                    setActivePart(idx);
+                    setIsMenuOpen(false);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                   className={`group relative w-full text-left p-6 rounded-3xl border-2 transition-all duration-300 ${activePart === idx
                     ? 'border-[var(--color-accent-pink)] bg-[var(--color-accent-pink-soft)] text-[var(--color-sumi-black)]'
                     : 'border-[var(--color-border-light)] bg-white hover:border-[var(--color-accent-pink)]/30'
@@ -521,6 +893,125 @@ const App = () => {
                   </ul>
                 </div>
               </div>
+
+              <div className="pt-8 border-t border-[var(--color-border-light)]">
+                <h2 className="text-2xl font-bold text-[var(--color-sumi-black)] mb-6 font-instrument uppercase tracking-tight">App Settings</h2>
+                <div className="bg-neutral-50 p-6 rounded-[2rem] border border-neutral-100 italic">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-8 h-8 bg-[var(--color-accent-pink)]/10 rounded-lg flex items-center justify-center text-[var(--color-accent-pink)]">
+                      <Settings2 size={16} />
+                    </div>
+                    <h4 className="font-bold text-[var(--color-sumi-black)] text-[10px] uppercase tracking-widest not-italic">Google AI Integration</h4>
+                  </div>
+                  <div className="space-y-4 not-italic">
+                    <div>
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-[0.1em] mb-2 block ml-1">Google API Key</label>
+                      <input
+                        type="password"
+                        value={googleApiKey}
+                        onChange={(e) => {
+                          setGoogleApiKey(e.target.value);
+                          localStorage.setItem('googleApiKey', e.target.value);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full bg-white border border-neutral-200 rounded-2xl py-3.5 px-5 text-xs font-mono focus:ring-2 focus:ring-[var(--color-accent-pink)] focus:border-transparent transition-all outline-none shadow-sm"
+                        placeholder="AIzaSy..."
+                      />
+                      <p className="mt-3 text-[10px] text-neutral-400 leading-relaxed ml-1 font-medium italic">
+                        Required for AI Audio Guides. Your key is stored locally in your browser.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Search Overlay */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 z-[150] bg-white/95 backdrop-blur-md pt-6 animate-in fade-in duration-300 overflow-y-auto no-scrollbar">
+          <div className="max-w-2xl mx-auto px-6 space-y-6 pb-20">
+            <div className="flex justify-between items-center sticky top-0 bg-white/95 pt-4 pb-4 z-10">
+              <div className="relative w-full mr-4">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
+                <input
+                  type="text"
+                  placeholder="Search places, activities..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-neutral-100 border-none rounded-full py-4 pl-12 pr-4 text-[var(--color-sumi-black)] placeholder-neutral-400 font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-pink)] transition-all"
+                  autoFocus
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setIsSearchOpen(false);
+                  setSearchQuery('');
+                }}
+                className="w-12 h-12 flex shrink-0 items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors"
+              >
+                <X size={20} className="text-[var(--color-sumi-black)]" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {searchQuery.length > 1 ? (
+                (() => {
+                  const results = [];
+                  itineraryData.forEach((part, pIdx) => {
+                    part.days.forEach((day, dIdx) => {
+                      day.events.forEach((event, eIdx) => {
+                        if (
+                          event.activity.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          event.note.toLowerCase().includes(searchQuery.toLowerCase())
+                        ) {
+                          results.push({ partIdx: pIdx, dayIdx: dIdx, eventIdx: eIdx, event, day, part });
+                        }
+                      });
+                    });
+                  });
+                  if (results.length === 0) {
+                    return <p className="text-center text-neutral-500 mt-10">No results found for "{searchQuery}"</p>;
+                  }
+                  return results.map((res, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        setActivePart(res.partIdx);
+                        setExpandedEventId(`${res.dayIdx}-${res.eventIdx}`);
+                        setIsSearchOpen(false);
+                        setSearchQuery('');
+                        setTimeout(() => {
+                          const el = document.getElementById(`day-${res.dayIdx}-event-${res.eventIdx}`);
+                          if (el) {
+                            const y = el.getBoundingClientRect().top + window.scrollY - 100;
+                            window.scrollTo({ top: y, behavior: 'smooth' });
+                          }
+                        }, 300);
+                      }}
+                      className="p-4 rounded-2xl border border-[var(--color-border-light)] bg-white cursor-pointer hover:border-[var(--color-accent-pink)]/50 focus:border-[var(--color-accent-pink)] transition-all flex items-start gap-4 shadow-sm hover:shadow-md"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-neutral-100 overflow-hidden shrink-0">
+                        <img src={getEventTypeBanner(res.event.type, res.event.activity)} className="w-full h-full object-cover" alt="" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[var(--color-sumi-black)]">{res.event.activity}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-bold uppercase text-[var(--color-accent-pink)] bg-[var(--color-accent-pink-soft)] px-2 py-0.5 rounded-full tracking-wider">Part {res.partIdx + 1}</span>
+                          <span className="text-xs text-neutral-500 font-medium">{res.day.date} • {res.event.time}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ));
+                })()
+              ) : (
+                <div className="text-center text-neutral-400 mt-10">
+                  <Search size={48} className="mx-auto text-neutral-200 mb-4" />
+                  <p>Type to search your itinerary...</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -604,19 +1095,29 @@ const App = () => {
                   const mapUrl = getGoogleMapsUrl(event, prevEvent, itineraryData[activePart]);
 
                   return (
-                    <div key={eventIdx} className="relative pl-10 group">
+                    <div key={eventIdx} id={`day-${dayIdx}-event-${eventIdx}`} className="relative pl-10 group">
                       <div className="absolute left-[-4.5px] top-6 w-2.5 h-2.5 rounded-full bg-white border-2 border-[var(--color-border-light)] ring-4 ring-[var(--color-bg-primary)] group-hover:border-[var(--color-accent-pink)] transition-colors duration-300 z-10"></div>
 
                       <div
                         className={`bg-white rounded-[2rem] border border-[var(--color-border-light)] premium-shadow transition-all duration-500 cursor-pointer overflow-hidden ${expandedEventId === `${dayIdx}-${eventIdx}` ? 'shadow-xl translate-y-[-4px] ring-2 ring-[var(--color-accent-pink)]/20' : 'hover:translate-y-[-4px] hover:shadow-lg hover:shadow-black/5'}`}
                         onClick={() => setExpandedEventId(expandedEventId === `${dayIdx}-${eventIdx}` ? null : `${dayIdx}-${eventIdx}`)}
                       >
-                        {/* Custom Banner Glimpse */}
-                        <div className="h-20 w-full relative overflow-hidden bg-neutral-100 group-hover:h-24 transition-all duration-500">
+                        <div className="relative h-28 sm:h-36 overflow-hidden rounded-t-[2.5rem] group cursor-pointer border-b border-[var(--color-border-light)] z-0">
+                          {guideCache[event.activity] !== undefined && (
+                            <div className="absolute top-4 right-4 z-20 bg-[var(--color-sumi-black)]/80 backdrop-blur-md text-white p-2 rounded-full shadow-lg border border-white/20 flex flex-col items-center justify-center animate-in zoom-in duration-300 pointer-events-none">
+                              {guideCache[event.activity].audioUrl ? <Headphones size={16} className="text-[var(--color-accent-pink)]" /> : <BookOpen size={16} className="text-[var(--color-accent-pink)]" />}
+                            </div>
+                          )}
                           <img
                             src={getEventTypeBanner(event.type, event.activity)}
-                            className="w-full h-full object-cover opacity-80 mix-blend-multiply group-hover:scale-105 transition-transform duration-700"
+                            className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
                             alt={event.activity}
+                            onError={(e) => {
+                              const fallbackId = "1526481280693-3bfa7568e0f3";
+                              if (!e.target.src.includes(fallbackId)) {
+                                e.target.src = `https://images.unsplash.com/photo-${fallbackId}?auto=format&fit=crop&q=80&w=1000`;
+                              }
+                            }}
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex items-end px-5 py-3">
                             <div className="flex items-center gap-2">
@@ -678,6 +1179,13 @@ const App = () => {
                                       ))}
                                     </ul>
                                   </div>
+
+                                  <AudioGuide
+                                    placeName={event.activity}
+                                    apiKey={googleApiKey}
+                                    cachedData={guideCache[event.activity]}
+                                    onCacheUpdate={handleCacheUpdate}
+                                  />
                                 </div>
                               )}
 
@@ -706,7 +1214,10 @@ const App = () => {
             {itineraryData.map((_, idx) => (
               <button
                 key={idx}
-                onClick={() => setActivePart(idx)}
+                onClick={() => {
+                  setActivePart(idx);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-xs transition-all duration-500 ${activePart === idx
                   ? 'bg-white text-[var(--color-sumi-black)] shadow-lg scale-105'
                   : 'text-white/40 hover:text-white hover:bg-white/10'
@@ -747,7 +1258,7 @@ const App = () => {
               <div className="p-6 border-b border-[var(--color-border-light)] flex justify-between items-center bg-white/50 backdrop-blur-md sticky top-0 z-10">
                 <div>
                   <h3 className="text-2xl font-bold text-[var(--color-sumi-black)] font-instrument">Japanese Vocab</h3>
-                  <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-1">20 Must-Know Phrases</p>
+                  <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-1">Must-Know and Useful Phrases</p>
                 </div>
                 <button
                   onClick={() => setIsVocabOpen(false)}

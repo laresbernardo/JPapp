@@ -34,7 +34,7 @@ import {
   Settings2
 } from 'lucide-react';
 
-const AudioGuide = ({ placeName, apiKey, cachedData, onCacheUpdate }) => {
+const AudioGuide = ({ placeName, dayContext, timeContext, apiKey, cachedData, onCacheUpdate }) => {
   const [status, setStatus] = useState(cachedData ? 'done' : 'idle');
   const [audioUrl, setAudioUrl] = useState(cachedData?.audioUrl || null);
   const [guideText, setGuideText] = useState(cachedData?.text || '');
@@ -91,7 +91,8 @@ const AudioGuide = ({ placeName, apiKey, cachedData, onCacheUpdate }) => {
         throw new Error('Please enter your Google API Key in the Global Settings (Menu).');
       }
 
-      const prompt = `Write an engaging, 300-word audio-guide script about ${placeName} in Japan. Include history, interesting curiosities, and context. Make it sound like a friendly, knowledgeable tour guide speaking to tourists. Do not include any text formatting like * or #, just use plain, readable text that flows well when spoken aloud.`;
+      const contextStr = dayContext && timeContext ? ` This is for an activity planned for ${dayContext} at ${timeContext}.` : '';
+      const prompt = `Write an engaging, 350-word audio-guide script about ${placeName} in Japan.${contextStr} Include history, interesting curiosities, and context. Don't introduce yourself. Make it sound like a friendly, deeply knowledgeable local tour guide speaking to tourists. Do not include any text formatting like * or #, just use plain, readable text that flows well when spoken aloud.`;
 
       const modelsToTry = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
       let text = '';
@@ -168,6 +169,8 @@ const AudioGuide = ({ placeName, apiKey, cachedData, onCacheUpdate }) => {
             const errDataFb = await audioResFallback.json();
             throw new Error(errDataFb.error?.message || 'Failed to generate audio with Google Cloud TTS.');
           }
+          const audioDataFallback = await audioResFallback.json();
+          const audioBlobFallback = new Blob([Uint8Array.from(atob(audioDataFallback.audioContent), c => c.charCodeAt(0))], { type: 'audio/mp3' });
           const newUrlFallback = URL.createObjectURL(audioBlobFallback);
           setAudioUrl(newUrlFallback);
           setStatus('done');
@@ -207,40 +210,32 @@ const AudioGuide = ({ placeName, apiKey, cachedData, onCacheUpdate }) => {
         </div>
       )}
 
-      {status === 'idle' && (
-        <div className="flex flex-col gap-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); generateContent('audio'); }}
-            className="w-full py-3 bg-[var(--color-sumi-black)] text-white rounded-xl font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 active:scale-[0.98] shadow-md"
-          >
-            <Headphones size={16} /> Generate Audio Guide
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); generateContent('text'); }}
-            className="w-full py-3 bg-white text-[var(--color-sumi-black)] border border-[var(--color-border-light)] rounded-xl font-bold text-sm hover:bg-neutral-50 transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
-          >
-            <BookOpen size={16} /> Generate Text Only
-          </button>
-        </div>
-      )}
-
-      {(status === 'generating_text' || status === 'generating_audio') && (
+      {status === 'generating_text' && (
         <div className="w-full py-6 flex flex-col items-center justify-center gap-3 bg-neutral-100 rounded-xl border border-neutral-200 border-dashed">
           <Loader2 size={24} className="animate-spin text-[var(--color-accent-pink)]" />
           <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
-            {status === 'generating_text' ? 'Writing script...' : 'Recording audio...'}
+            Writing script...
           </span>
         </div>
       )}
 
-      {status === 'done' && (
+      {status !== 'generating_text' && (
         <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          {status === 'generating_audio' && (
+            <div className="w-full py-4 flex flex-col items-center justify-center gap-2 bg-neutral-100/50 rounded-xl border border-neutral-200 border-dashed animate-pulse">
+              <Loader2 size={16} className="animate-spin text-[var(--color-accent-pink)]" />
+              <span className="text-[8px] font-bold text-neutral-500 uppercase tracking-widest">
+                Recording audio...
+              </span>
+            </div>
+          )}
           {guideText && (
-            <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-100 italic text-sm text-[var(--color-sumi-gray)] leading-relaxed relative group">
-              <div className="absolute -top-2 left-4 px-2 bg-white text-[8px] font-bold text-neutral-400 uppercase tracking-widest border border-neutral-100 rounded">Guide Transcript</div>
+            <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-100 italic text-sm text-[var(--color-sumi-gray)] leading-relaxed relative group max-h-[140px] overflow-y-auto no-scrollbar">
+              <div className="absolute -top-2 left-4 px-2 bg-white text-[8px] font-bold text-neutral-400 uppercase tracking-widest border border-neutral-100 rounded sticky top-0">Guide Transcript</div>
               {guideText}
             </div>
           )}
+
           {audioUrl && (
             <div className="bg-white rounded-xl border border-[var(--color-border-light)] p-4 shadow-sm" onClick={(e) => e.stopPropagation()}>
               <audio
@@ -285,6 +280,21 @@ const AudioGuide = ({ placeName, apiKey, cachedData, onCacheUpdate }) => {
               </div>
             </div>
           )}
+
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); generateContent('text'); }}
+              className="w-full py-3 bg-white text-[var(--color-sumi-black)] border border-[var(--color-border-light)] rounded-xl font-bold text-sm hover:bg-neutral-50 transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+            >
+              <BookOpen size={16} /> {guideText ? 'Re-generate Text' : 'Generate Text Only'}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); generateContent('audio'); }}
+              className="w-full py-3 bg-[var(--color-sumi-black)] text-white rounded-xl font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 active:scale-[0.98] shadow-md"
+            >
+              <Headphones size={16} /> {audioUrl ? 'Re-generate Audio' : 'Generate Audio Guide'}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -298,14 +308,75 @@ const App = () => {
   const [exchangeRate, setExchangeRate] = useState(null);
   const [weather, setWeather] = useState({});
   const [jpyAmount, setJpyAmount] = useState('1000');
-  const [expandedEventId, setExpandedEventId] = useState(null);
+  const [expandedEventIds, setExpandedEventIds] = useState([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [googleApiKey, setGoogleApiKey] = useState(() => localStorage.getItem('googleApiKey') || '');
-  const [guideCache, setGuideCache] = useState({});
+  const [guideCache, setGuideCache] = useState(() => {
+    try {
+      const saved = localStorage.getItem('guideCache');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [isPreGenerating, setIsPreGenerating] = useState(false);
 
   const handleCacheUpdate = (placeName, data) => {
-    setGuideCache((prev) => ({ ...prev, [placeName]: data }));
+    setGuideCache((prev) => ({ ...prev, [placeName]: { ...prev[placeName], ...data } }));
+  };
+
+  // Persist guideCache
+  React.useEffect(() => {
+    localStorage.setItem('guideCache', JSON.stringify(guideCache));
+  }, [guideCache]);
+
+  const preGenerateAllTexts = async () => {
+    if (!googleApiKey || isPreGenerating) return;
+    setIsPreGenerating(true);
+
+    const placesToGen = [];
+    const seenPlaces = new Set();
+    itineraryData.forEach(part => {
+      part.days.forEach(day => {
+        day.events.forEach(event => {
+          if (event.activity && !guideCache[event.activity]?.text && !seenPlaces.has(event.activity)) {
+            placesToGen.push({
+              place: event.activity,
+              dayContext: day.label,
+              timeContext: event.time
+            });
+            seenPlaces.add(event.activity);
+          }
+        });
+      });
+    });
+
+    for (const item of placesToGen) {
+      try {
+        const contextStr = item.dayContext && item.timeContext ? ` This is for an activity planned for ${item.dayContext} at ${item.timeContext}.` : '';
+        const prompt = `Write an engaging, 350-word audio-guide script about ${item.place} in Japan.${contextStr} Include history, interesting curiosities, and context. Don't introduce yourself. Make it sound like a friendly, deeply knowledgeable local tour guide speaking to tourists. Do not include any text formatting like * or #, just use plain, readable text that flows well when spoken aloud.`;
+        const model = 'gemini-2.0-flash'; // Use faster model for batch
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            handleCacheUpdate(item.place, { text });
+          }
+        }
+        // Small delay to avoid rate limits
+        await new Promise(r => setTimeout(r, 1000));
+      } catch (err) {
+        console.error(`Failed to pre-generate for ${item.place}`, err);
+      }
+    }
+    setIsPreGenerating(false);
   };
 
   const getEventTypeBanner = (type, activity) => {
@@ -533,12 +604,6 @@ const App = () => {
     }
   ];
 
-  const areas = {
-    "Tokyo": { lat: 35.6762, lon: 139.6503 },
-    "Kyoto": { lat: 35.0116, lon: 135.7683 },
-    "Osaka": { lat: 34.6937, lon: 135.5023 }
-  };
-
   React.useEffect(() => {
     // Fetch Currency
     fetch('https://open.er-api.com/v6/latest/JPY')
@@ -551,6 +616,11 @@ const App = () => {
       .catch(err => console.error("Currency fetch failed", err));
 
     // Fetch Weather for main cities with daily ranges
+    const areas = {
+      "Tokyo": { lat: 35.6762, lon: 139.6503 },
+      "Kyoto": { lat: 35.0116, lon: 135.7683 },
+      "Osaka": { lat: 34.6937, lon: 135.5023 }
+    };
     Object.entries(areas).forEach(([city, coords]) => {
       fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo`)
         .then(res => res.json())
@@ -610,12 +680,12 @@ const App = () => {
           date: "Fri, Mar 27",
           label: "Day 1: Old Edo & River Breezes",
           events: [
-            { time: "08:00", activity: "Senso-ji Temple (Asakusa)", type: "sight", transportMode: "public", note: "Tokyo's oldest temple. Red lantern (Kaminarimon) is iconic. Tip: Draw an Omikuji fortune for ¥100." },
+            { time: "07:00", activity: "Senso-ji Temple (Asakusa)", type: "sight", transportMode: "public", note: "Tokyo's oldest temple. The huge red lantern (Kaminarimon) is iconic. Tip: Draw an \"Omikuji\" (fortune) for 100 yen." },
             { time: "10:00", activity: "Nakamise Dori Snacking", type: "food", transportMode: "walk", note: "Try freshly baked Melonpan at Kagetsudo. Fluffy sweet bread (no actual melon)." },
             { time: "11:00", activity: "Water Bus to Hamarikyu", type: "transport", transportMode: "walk", note: "Tokyo Cruise boat from Asakusa Pier down Sumida River." },
             { time: "12:00", activity: "Hama-rikyu Gardens", type: "sight", transportMode: "boat", note: "Edo-period saltwater garden vs skyscrapers. Activity: Matcha and sweet at the island tea house." },
             { time: "13:30", activity: "Manten Sushi Marunouchi", type: "food", status: "confirmed", transportMode: "public", note: "Logistics: Booked! Incredible Omakase for the price (approx. ¥7,000)." },
-            { time: "15:30", activity: "Ginza Central & Architecture", type: "walk", transportMode: "taxi", note: "Relaxed stroll. See Wako building clock tower and high-end facades." },
+            { time: "15:30", activity: "Ginza Central & Depachika (Food Halls)", type: "walk", transportMode: "taxi", note: "Metro o Taxi desde Akihabara (aprox. 15 min). Cerca de Ginza para cenar. Paseo relajado. Arquitectura: Admiren las fachadas del emblemático edificio Wako con su torre de reloj." },
             { time: "19:00", activity: "Monjayaki Street (Tsukishima)", type: "food", transportMode: "public", note: "Unique Tokyo savory pancake. Monja Kura is the spot. Order Mentaiko & Cheese version." }
           ]
         },
@@ -624,10 +694,10 @@ const App = () => {
           label: "Day 2: Sakura Explosion",
           events: [
             { time: "08:30", activity: "Ueno Park Hanami", type: "sight", transportMode: "public", note: "Hanami ground zero. Thousands of lanterns. Walk the main alley toward the National Museum." },
-            { time: "10:00", activity: "Tokyo National Museum", type: "sight", transportMode: "walk", note: "Largest/oldest in Japan. Collection of art/artifacts. Spend 1-2 hours here (¥1,000)." },
+            { time: "10:00", activity: "Tokyo National Museum (Ueno Park)", type: "sight", transportMode: "walk", note: "Después del paseo por el parque (o antes de Ameyoko Market). Entrada: Aprox. ¥1,000. Es el museo más grande y antiguo de Japón, con una colección impresionante de arte y artefactos japoneses y asiáticos. Ya están en la puerta; podrían dedicar 1-2 horas para verlo y aprovechar al máximo su tiempo en Ueno." },
             { time: "11:00", activity: "Ameyoko Market", type: "food", transportMode: "walk", note: "Street food chaos. Seafood bowls at Minatoya or snack on fruit sticks and takoyaki." },
             { time: "13:30", activity: "Akihabara Electric Town", type: "sight", transportMode: "train", note: "Radio Kaikan (anime) and Gachapon Hall (hundreds of machines). Sensory overload!" },
-            { time: "15:30", activity: "Ginza Mitsukoshi Depachika", type: "food", transportMode: "taxi", note: "Gourmet food halls. Incredible confectionery and gourmet display. Experience the culture!" },
+            { time: "15:30", activity: "Ginza Central & Depachika (Food Halls)", type: "food", transportMode: "taxi", note: "Metro o Taxi desde Akihabara (aprox. 15 min). Cerca de Ginza para cenar. Paseo relajado. Gastronomía (Cultura): Visiten el sótano Depachika de un gran almacén (como Ginza Mitsukoshi o Daimaru) para ver una increíble exhibición de repostería japonesa, chocolates y exquisiteces gourmet. Es una experiencia cultural en sí misma y una excelente oportunidad para un tentempié ligero antes del sushi." },
             { time: "18:30", activity: "Sushi Ginza Onodera Tōryūmon", type: "food", transportMode: "public", note: "Standing sushi bar. High Michelin-level quality at a lower price." },
             { time: "20:00", activity: "teamLab Planets", type: "sight", status: "confirmed", transportMode: "public", note: "Barefoot immersive art experience. Critical booking confirmed!" }
           ]
@@ -645,13 +715,15 @@ const App = () => {
           date: "Sun, Mar 29",
           label: "Day 3: Digital Art & Wagyu",
           events: [
-            { time: "08:00", activity: "Tsukiji Outer Market", type: "food", transportMode: "public", note: "Tamagoyaki or wagyu skewer breakfast. Tip: Leave bags at Shimbashi coin lockers." },
+            { time: "08:00", activity: "Tsukiji Outer Market", type: "food", transportMode: "public", note: "Tamagoyaki or wagyu skewer breakfast." },
+            { time: "09:30", activity: "Luggage Check-Out", type: "hotel", transportMode: "walk", note: "Check out of HOTEL LIVEMAX and move bags to Shimbashi/Tokyo Station locker." },
             { time: "10:30", activity: "Imperial Palace East Gardens", type: "sight", transportMode: "walk", note: "Free admission. Massive stone walls of old Edo castle. Beautiful landscaping." },
             { time: "12:00", activity: "Chidorigafuchi Moat", type: "sight", transportMode: "public", note: "Classic Sakura postcard shot. Tip: Rowboats if line < 45m, else walk the path." },
-            { time: "13:30", activity: "Ginza Depachika Lunch", type: "food", transportMode: "public", note: "Gourmet bento box from Mitsukoshi or casual high-quality spot." },
-            { time: "16:30", activity: "Check-in: Premier Hotel Cabin", type: "hotel", transportMode: "public", note: "Retrieve bags and move to Shinjuku hotel." },
-            { time: "18:30", activity: "Shibuya Sky Sunset", type: "sight", status: "pending", transportMode: "public", note: "Logistics: Book 14 days in advance for sunset slot." },
-            { time: "20:00", activity: "Yakiniku Ushigoro Shinjuku", type: "food", status: "pending", transportMode: "walk", note: "Top-tier A5 Wagyu BBQ. High-priority reservation needed." }
+            { time: "13:00", activity: "Retrieve Luggage & Travel", type: "transport", transportMode: "public", note: "Retrieve bags from locker and take subway to Shinjuku." },
+            { time: "14:00", activity: "Quick Lunch & Drop-off Luggage", type: "food", transportMode: "walk", note: "Quick meal near Shinjuku/Shibuya; drop bags at Premier Hotel Cabin Shinjuku." },
+            { time: "15:00", activity: "Shibuya Sky (Booked)", type: "sight", status: "confirmed", transportMode: "public", note: "Logistics: Confirmed booking for 15:20-15:39 slot. Arrive 15 mins early." },
+            { time: "17:00", activity: "The Move & Check-in", type: "hotel", transportMode: "public", note: "Finalize check-in at Premier Hotel Cabin Shinjuku and drop bags." },
+            { time: "20:00", activity: "Dinner: Wagyu Yakiniku Blackhole", type: "food", status: "confirmed", transportMode: "walk", note: "Booked! A5-rank Wagyu. Excellent value. GMaps: https://maps.app.goo.gl/95d4KqfjsG1i83Di8" }
           ]
         },
         {
@@ -721,11 +793,15 @@ const App = () => {
           date: "Fri, Apr 3",
           label: "Day 8: Nara & Uji Day Trip",
           events: [
-            { time: "10:00", activity: "Nara Park & Deer", type: "sight", transportMode: "public", note: "Feed bowing deer crackers. Try Nakatanidou for fast mochi pounding." },
-            { time: "11:30", activity: "Todai-ji Great Buddha", type: "sight", transportMode: "walk", note: "World's largest wooden building. Awe-inspiring bronze Buddha (¥600)." },
-            { time: "14:45", activity: "Byodo-in Temple (Uji)", type: "sight", transportMode: "public", note: "UNESCO site. Phoenix Hall is on the ¥10 coin. Best Matcha source." },
-            { time: "16:00", activity: "Uji Bridge & Matcha Shops", type: "food", transportMode: "walk", note: "Matcha ice cream or parfait. Nakamura Tokichi is recommended." },
-            { time: "18:00", activity: "Nishiki Market Snacks", type: "food", transportMode: "public", note: "Kyoto's Kitchen. Early dinner or final Kyoto snacks." }
+            { time: "09:00", activity: "Train to Nara", type: "transport", transportMode: "public", note: "Take the Kintetsu Line (faster/closer to the park than JR) (aprox. 55 min). You do not need to buy train tickets from Osaka to Nara in advance for regular trains. Trains, such as the Kintetsu line from Namba or JR line from Osaka/Tennoji, run every 10–15 minutes, and you can simply use an IC card (Suica/Pasmo/ICOCA)." },
+            { time: "10:00", activity: "Nara Park", type: "sight", transportMode: "public", note: "Activity: Buy shika-senbei (deer crackers) for ¥200 and bow to the free-roaming deer." },
+            { time: "11:30", activity: "Todai-ji Temple (Daibutsuden)", type: "sight", transportMode: "walk", note: "Why: Largest wooden building in the world housing the Great Buddha (Daibutsu). It is awe-inspiring. Approx. ¥600." },
+            { time: "13:00", activity: "Nakatanidou Mochi", type: "food", transportMode: "walk", note: "Watch: The famous high-speed mochi pounders. Eat a warm, green mugwort mochi." },
+            { time: "14:00", activity: "Train to Uji", type: "transport", transportMode: "public", note: "Transport: Go to JR Nara Station and take the JR Nara Line towards Kyoto. Uji is a perfect stop on the way back (approx. 30 min ride)." },
+            { time: "14:45", activity: "Byodo-in Temple", type: "sight", transportMode: "public", note: "Architecture: Visit this spectacular UNESCO World Heritage Site. The Phoenix Hall is featured on the back of the Japanese ¥10 coin. Admission: Approx. ¥700." },
+            { time: "16:00", activity: "Uji Bridge & Matcha Shops", type: "food", transportMode: "walk", note: "Experience: Uji is the source of Japan's best Matcha. Stroll across the ancient Uji Bridge and indulge in the local specialty—matcha ice cream, parfait, or high-quality loose-leaf tea. Recommendation: Nakamura Tokichi or Tsujiri Main Shop." },
+            { time: "17:30", activity: "Return to Kyoto", type: "transport", transportMode: "public", note: "Take the JR Nara Line directly back to Kyoto Station (approx. 20 min)." },
+            { time: "18:00", activity: "Nishiki Market (Early Dinner/Snacks)", type: "food", transportMode: "public", note: "The market closes around 17:30-18:00, but many restaurants inside stay open. Or head back to Pontocho for a final Kyoto drink." }
           ]
         }
       ]
@@ -741,21 +817,13 @@ const App = () => {
           date: "Sat, Apr 4",
           label: "Day 9: Castles & Neon",
           events: [
-            { time: "10:30", activity: "Check-in: Hotel Balian", type: "hotel", transportMode: "train", note: "Take JR or Hankyu to Namba (45m). Drop bags." },
-            { time: "11:30", activity: "Umeda Sky Building", type: "sight", transportMode: "public", note: "Floating Garden. Iconic modern towers with 360 view." },
-            { time: "14:00", activity: "Osaka Castle Park", type: "sight", transportMode: "public", note: " majestic facade. Skip interior if short on time." },
-            { time: "16:00", activity: "Shinsekai District", type: "food", transportMode: "public", note: "Retro-futuristic vibe. Try Kushikatsu fried skewers at Daruma." },
-            { time: "19:30", activity: "Dotonbori Night Tour", type: "sight", transportMode: "public", note: "Famous Glico Man and Crab signs. Farewell feast! Matsusakaagyu M recommended." }
-          ]
-        },
-        {
-          date: "Sun, Apr 5",
-          label: "Day 10: Sayonara",
-          events: [
-            { time: "06:00", activity: "Hotel Checkout", type: "hotel", transportMode: "walk", note: "Early departure. Ensure nothing left behind." },
-            { time: "06:30", activity: "Namba Station Transfer", type: "transport", transportMode: "public", note: "Nankai Rapi:t or Haruka Express (~45 min)." },
-            { time: "07:30", activity: "Kansai Airport (KIX)", type: "transport", transportMode: "walk", note: "Check-in for Air China CA162. Fly home via Beijing." },
-            { time: "09:05", activity: "Flight Departs", type: "transport", transportMode: "walk", note: "See you later, Japan!" }
+            { time: "09:30", activity: "Train to Osaka", type: "transport", transportMode: "public", note: "Take the JR Special Rapid or Hankyu line. 30-45 mins." },
+            { time: "10:30", activity: "Check-in: Hotel Balian Resort Namba", type: "hotel", transportMode: "train", note: "Take JR or Hankyu to Namba (45m). Drop bags." },
+            { time: "11:30", activity: "Umeda Sky Building (Floating Garden Observatory)", type: "sight", transportMode: "public", note: "Travel: Take the Midosuji Subway Line from Namba to Umeda Station (approx. 20-30 min total). Why: An iconic piece of modern architecture connecting two towers. The open-air deck offers a spectacular 360-degree view of the city, perfect for watching the sunset over Osaka. Tip: Aim to arrive 45 minutes before the official sunset time for the best light." },
+            { time: "14:00", activity: "Osaka Castle", type: "sight", transportMode: "public", note: "Walk the park grounds. The castle looks majestic from the outside (the inside is a modern museum, skip if short on time)." },
+            { time: "16:00", activity: "Shinsekai District (Lunch)", type: "food", transportMode: "public", note: "Eat: Kushikatsu (fried skewers) at Daruma. Vibe: Retro-futuristic, nostalgic Japan." },
+            { time: "18:00", activity: "Osaka Night Free Walking Tour (2 hours)", type: "sight", status: "confirmed", transportMode: "public", note: "Gathering: Starts under the Giant Penguin of MEGA Don Quijote Shinsekai. Booked. Experience: Uncover a different side of Japan, exploring Osaka's historic 'getto' area and its largest red-light district, delving into the hidden and shadowed aspects of Japanese society." },
+            { time: "20:00", activity: "Dotonbori Night", type: "sight", transportMode: "public", note: "Activity: Walk to the canal. See the famous Glico Man sign and the giant crab/octopus signs. Dinner: This is your farewell feast. Option A (Beef): Matsusakaagyu Yakiniku M. Option B (Crab): Kani Doraku (the giant crab sign). Option C (Street Food): Takoyaki (octopus balls) and Okonomiyaki (pancakes) from a street stall." }
           ]
         }
       ]
@@ -906,17 +974,39 @@ const App = () => {
                   <div className="space-y-4 not-italic">
                     <div>
                       <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-[0.1em] mb-2 block ml-1">Google API Key</label>
-                      <input
-                        type="password"
-                        value={googleApiKey}
-                        onChange={(e) => {
-                          setGoogleApiKey(e.target.value);
-                          localStorage.setItem('googleApiKey', e.target.value);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full bg-white border border-neutral-200 rounded-2xl py-3.5 px-5 text-xs font-mono focus:ring-2 focus:ring-[var(--color-accent-pink)] focus:border-transparent transition-all outline-none shadow-sm"
-                        placeholder="AIzaSy..."
-                      />
+                      <div className="flex flex-col gap-3">
+                        <input
+                          type="password"
+                          value={googleApiKey}
+                          onChange={(e) => {
+                            setGoogleApiKey(e.target.value);
+                            localStorage.setItem('googleApiKey', e.target.value);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full bg-white border border-neutral-200 rounded-2xl py-3.5 px-5 text-xs font-mono focus:ring-2 focus:ring-[var(--color-accent-pink)] focus:border-transparent transition-all outline-none shadow-sm"
+                          placeholder="AIzaSy..."
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            preGenerateAllTexts();
+                          }}
+                          disabled={isPreGenerating || !googleApiKey}
+                          className="w-full py-3.5 bg-[var(--color-sumi-black)] text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          {isPreGenerating ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" />
+                              <span>Generating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <FastForward size={14} />
+                              <span>Pre-generate All Guide Texts</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                       <p className="mt-3 text-[10px] text-neutral-400 leading-relaxed ml-1 font-medium italic">
                         Required for AI Audio Guides. Your key is stored locally in your browser.
                       </p>
@@ -980,7 +1070,9 @@ const App = () => {
                       key={idx}
                       onClick={() => {
                         setActivePart(res.partIdx);
-                        setExpandedEventId(`${res.dayIdx}-${res.eventIdx}`);
+                        if (!expandedEventIds.includes(`${res.dayIdx}-${res.eventIdx}`)) {
+                          setExpandedEventIds(prev => [...prev, `${res.dayIdx}-${res.eventIdx}`]);
+                        }
                         setIsSearchOpen(false);
                         setSearchQuery('');
                         setTimeout(() => {
@@ -1099,8 +1191,13 @@ const App = () => {
                       <div className="absolute left-[-4.5px] top-6 w-2.5 h-2.5 rounded-full bg-white border-2 border-[var(--color-border-light)] ring-4 ring-[var(--color-bg-primary)] group-hover:border-[var(--color-accent-pink)] transition-colors duration-300 z-10"></div>
 
                       <div
-                        className={`bg-white rounded-[2rem] border border-[var(--color-border-light)] premium-shadow transition-all duration-500 cursor-pointer overflow-hidden ${expandedEventId === `${dayIdx}-${eventIdx}` ? 'shadow-xl translate-y-[-4px] ring-2 ring-[var(--color-accent-pink)]/20' : 'hover:translate-y-[-4px] hover:shadow-lg hover:shadow-black/5'}`}
-                        onClick={() => setExpandedEventId(expandedEventId === `${dayIdx}-${eventIdx}` ? null : `${dayIdx}-${eventIdx}`)}
+                        className={`bg-white rounded-[2rem] border border-[var(--color-border-light)] premium-shadow transition-all duration-500 cursor-pointer overflow-hidden ${expandedEventIds.includes(`${dayIdx}-${eventIdx}`) ? 'shadow-xl translate-y-[-4px] ring-2 ring-[var(--color-accent-pink)]/20' : 'hover:translate-y-[-4px] hover:shadow-lg hover:shadow-black/5'}`}
+                        onClick={() => {
+                          const id = `${dayIdx}-${eventIdx}`;
+                          setExpandedEventIds(prev =>
+                            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+                          );
+                        }}
                       >
                         <div className="relative h-28 sm:h-36 overflow-hidden rounded-t-[2.5rem] group cursor-pointer border-b border-[var(--color-border-light)] z-0">
                           {guideCache[event.activity] !== undefined && (
@@ -1140,20 +1237,26 @@ const App = () => {
                                 </div>
                               )}
                             </div>
-                            <a
-                              href={mapUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-8 h-8 flex items-center justify-center bg-[var(--color-bg-primary)] text-[var(--color-sumi-gray)] rounded-full hover:bg-[var(--color-accent-pink)] hover:text-white transition-all active:scale-90 border border-[var(--color-border-light)] shrink-0"
-                            >
-                              <Navigation size={14} strokeWidth={2} />
-                            </a>
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center px-2 py-1 rounded-md bg-[var(--color-bg-primary)] text-[9px] font-bold text-neutral-500 uppercase tracking-widest border border-neutral-100 hover:border-neutral-200 transition-colors">
+                                {event.transportMode === 'walk' ? <Footprints size={10} className="mr-1.5 opacity-60 text-[var(--color-accent-green)]" /> : <Train size={10} className="mr-1.5 opacity-60 text-blue-500" />}
+                                {event.transportMode}
+                              </span>
+                              <a
+                                href={mapUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-8 h-8 flex items-center justify-center bg-[var(--color-bg-primary)] text-[var(--color-sumi-gray)] rounded-full hover:bg-[var(--color-accent-pink)] hover:text-white transition-all active:scale-90 border border-[var(--color-border-light)] shrink-0"
+                              >
+                                <Navigation size={14} strokeWidth={2} />
+                              </a>
+                            </div>
                           </div>
 
                           <div className="flex gap-4 items-start pb-1">
                             <div className="flex flex-col gap-3 w-full">
-                              {!expandedEventId || expandedEventId !== `${dayIdx}-${eventIdx}` ? (
+                              {!expandedEventIds.includes(`${dayIdx}-${eventIdx}`) ? (
                                 <p className="text-sm text-[var(--color-sumi-gray)] leading-relaxed font-medium line-clamp-1 opacity-80">
                                   {event.note}
                                 </p>
@@ -1182,6 +1285,8 @@ const App = () => {
 
                                   <AudioGuide
                                     placeName={event.activity}
+                                    dayContext={day.label}
+                                    timeContext={event.time}
                                     apiKey={googleApiKey}
                                     cachedData={guideCache[event.activity]}
                                     onCacheUpdate={handleCacheUpdate}
@@ -1189,12 +1294,6 @@ const App = () => {
                                 </div>
                               )}
 
-                              <div className="flex items-center">
-                                <span className="inline-flex items-center px-2 py-1 rounded-md bg-[var(--color-bg-primary)] text-[9px] font-bold text-neutral-500 uppercase tracking-widest border border-neutral-100 hover:border-neutral-200 transition-colors">
-                                  {event.transportMode === 'walk' ? <Footprints size={10} className="mr-1.5 opacity-60 text-[var(--color-accent-green)]" /> : <Train size={10} className="mr-1.5 opacity-60 text-blue-500" />}
-                                  {event.transportMode}
-                                </span>
-                              </div>
                             </div>
                           </div>
                         </div>

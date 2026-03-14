@@ -92,7 +92,7 @@ const AudioGuide = ({ placeName, dayContext, timeContext, apiKey, cachedData, on
       }
 
       const contextStr = dayContext && timeContext ? ` This is for an activity planned for ${dayContext} at ${timeContext}.` : '';
-      const prompt = `Write an engaging, 350-word audio-guide script about ${placeName} in Japan.${contextStr} Include history, interesting curiosities, and context. Don't introduce yourself. Make it sound like a friendly, deeply knowledgeable local tour guide speaking to tourists. Do not include any text formatting like * or #, just use plain, readable text that flows well when spoken aloud.`;
+      const prompt = `Write an engaging, 300-350 word audio-guide script about ${placeName} in Japan.${contextStr} Include history, interesting curiosities, and context. Don't introduce yourself. Make it sound like a friendly, deeply knowledgeable local tour guide speaking to tourists. Do not include any text formatting like * or #, just use plain, readable text that flows well when spoken aloud.`;
 
       const modelsToTry = ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
       let text = '';
@@ -199,7 +199,7 @@ const AudioGuide = ({ placeName, dayContext, timeContext, apiKey, cachedData, on
     <div className="bg-[var(--color-bg-primary)] rounded-2xl p-4 border border-[var(--color-border-light)]/50 mt-4 overflow-hidden shadow-sm" onClick={(e) => e.stopPropagation()}>
       <div className="flex justify-between items-center mb-3">
         <h6 className="flex items-center gap-1.5 font-bold text-[var(--color-accent-pink)] uppercase tracking-widest text-[10px]">
-          <Headphones size={12} /> AI Audio Guide
+          <Headphones size={12} /> AI Guide
         </h6>
       </div>
 
@@ -231,7 +231,6 @@ const AudioGuide = ({ placeName, dayContext, timeContext, apiKey, cachedData, on
           )}
           {guideText && (
             <div className="bg-neutral-50 rounded-xl p-4 border border-neutral-100 italic text-sm text-[var(--color-sumi-gray)] leading-relaxed relative group max-h-[140px] overflow-y-auto no-scrollbar">
-              <div className="absolute -top-2 left-4 px-2 bg-white text-[8px] font-bold text-neutral-400 uppercase tracking-widest border border-neutral-100 rounded sticky top-0">Guide Transcript</div>
               {guideText}
             </div>
           )}
@@ -281,20 +280,27 @@ const AudioGuide = ({ placeName, dayContext, timeContext, apiKey, cachedData, on
             </div>
           )}
 
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={(e) => { e.stopPropagation(); generateContent('text'); }}
-              className="w-full py-3 bg-white text-[var(--color-sumi-black)] border border-[var(--color-border-light)] rounded-xl font-bold text-sm hover:bg-neutral-50 transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
-            >
-              <BookOpen size={16} /> {guideText ? 'Re-generate Text' : 'Generate Text Only'}
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); generateContent('audio'); }}
-              className="w-full py-3 bg-[var(--color-sumi-black)] text-white rounded-xl font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 active:scale-[0.98] shadow-md"
-            >
-              <Headphones size={16} /> {audioUrl ? 'Re-generate Audio' : 'Generate Audio Guide'}
-            </button>
-          </div>
+          {apiKey ? (
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); generateContent('text'); }}
+                className="w-full py-3 bg-white text-[var(--color-sumi-black)] border border-neutral-200 rounded-xl font-bold text-sm hover:bg-neutral-50 transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+              >
+                <BookOpen size={16} /> {guideText ? 'Re-generate Text' : 'Generate Text Only'}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); generateContent('audio'); }}
+                className="w-full py-3 bg-[var(--color-sumi-black)] text-white rounded-xl font-bold text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 active:scale-[0.98] shadow-md"
+              >
+                <Headphones size={16} /> {audioUrl ? 'Re-generate Audio' : 'Generate Audio Guide'}
+              </button>
+            </div>
+          ) : !guideText && !audioUrl && (
+            <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 border-dashed text-center">
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mb-1">AI Guide Locked</p>
+              <p className="text-[10px] text-neutral-500 font-medium">Add Google API Key in <span className="text-[var(--color-accent-pink)]">Global Settings</span> to enable.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -355,7 +361,7 @@ const App = () => {
     for (const item of placesToGen) {
       try {
         const contextStr = item.dayContext && item.timeContext ? ` This is for an activity planned for ${item.dayContext} at ${item.timeContext}.` : '';
-        const prompt = `Write an engaging, 350-word audio-guide script about ${item.place} in Japan.${contextStr} Include history, interesting curiosities, and context. Don't introduce yourself. Make it sound like a friendly, deeply knowledgeable local tour guide speaking to tourists. Do not include any text formatting like * or #, just use plain, readable text that flows well when spoken aloud.`;
+        const prompt = `Write an engaging, 300-350 word audio-guide script about ${item.place} in Japan.${contextStr} Include history, interesting curiosities, and context. Don't introduce yourself. Make it sound like a friendly, deeply knowledgeable local tour guide speaking to tourists. Do not include any text formatting like * or #, just use plain, readable text that flows well when spoken aloud.`;
         const model = 'gemini-2.0-flash'; // Use faster model for batch
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
           method: 'POST',

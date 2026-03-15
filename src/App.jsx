@@ -818,7 +818,7 @@ const App = () => {
           },
           {
             "time": "13:30",
-            "activity": "Lunch: Manten Sushi (Marunouchi/Nihonbashi)",
+            "activity": "Lunch: Manten Sushi (Marunouchi)",
             "type": "food",
             "transportMode": "public",
             "note": "Logistics: Booked and confirmed 1 month ahead. Done! Why: Incredible Omakase for the price (approx. \u00a57,000).",
@@ -891,8 +891,8 @@ const App = () => {
             "activity": "teamLab Planets (Toyosu)",
             "type": "sight",
             "transportMode": "public",
-            "note": "An unforgettable, barefoot, immersive art experience with water features. Logistics: Critical booking! Your reservation must be for this time - DONE!",
-            "status": ""
+            "note": "An unforgettable, barefoot, immersive art experience with water features. Logistics: Booked 2 months in advance.",
+            "status": "confirmed"
           }
         ]
       }
@@ -1039,7 +1039,15 @@ const App = () => {
             "activity": "Golden Gai",
             "type": "sight",
             "transportMode": "public",
-            "note": "Drink: End the night with a highball in one of the 200 tiny bars packed into a few alleyways. IMPORTANT: Ask your hotel to ship your large luggage to Kyoto tonight. Pack a small backpack for tomorrow's travel.",
+            "note": "Drink: End the night with a highball in one of the 200 tiny bars packed into a few alleyways.",
+            "status": ""
+          },
+          {
+            "time": "23:00",
+            "activity": "Ship your large luggage to Kyoto",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "IMPORTANT: Ask your hotel to ship your large luggage to Kyoto tonight. Pack a small backpack for tomorrow's travel.",
             "status": ""
           }
         ]
@@ -1061,8 +1069,8 @@ const App = () => {
             "activity": "Shinkansen to Kyoto",
             "type": "transport",
             "transportMode": "public",
-            "note": "Depart Tokyo or Shinagawa Station. Tip: Buy a \"Katsu Sando\" (Pork sandwich) at the station. Sit on the Right side (Seat E) for Mt. Fuji views.",
-            "status": ""
+            "note": "Depart Tokyo or Shinagawa Station. Tickets: Booked tickets for 31/01. Selected a seat 30 days before the trip (E row, right side) for Mt. Fuji views. Use SmartEx App. Tip: Buy a \"Katsu Sando\" (Pork sandwich) at the station.",
+            "status": "confirmed"
           },
           {
             "time": "11:30",

@@ -33,6 +33,7 @@ import {
   Loader2,
   Settings2
 } from 'lucide-react';
+import preCreatedGuides from './data/guides.json';
 
 const AudioGuide = ({ placeName, dayContext, timeContext, apiKey, cachedData, onCacheUpdate }) => {
   const [status, setStatus] = useState(cachedData ? 'done' : 'idle');
@@ -307,6 +308,67 @@ const AudioGuide = ({ placeName, dayContext, timeContext, apiKey, cachedData, on
   );
 };
 
+const NoteRenderer = ({ note }) => {
+  if (!note) return null;
+
+  // Common labels used in the itinerary
+  const labels = [
+    "Travel", "Highlight", "Tip", "Action", "Strategy", "Logistics",
+    "Done", "Eat", "Vibe", "GMaps", "Where", "Why", "Activity",
+    "Experience", "Structure", "Architecture", "Admission",
+    "Recommendation", "Task", "Hotel", "Ryokan", "Checkout",
+    "Arrive", "Flight", "Fly", "Info", "Venue", "Gathering"
+  ];
+
+  // Create a regex that matches any of these labels followed by a colon
+  const labelRegex = new RegExp(`(${labels.join('|')}):`, 'g');
+
+  // Split the note into parts
+  const parts = note.split(labelRegex).filter(Boolean);
+
+  // If no labels were found or only one part remains, just render as text
+  if (parts.length <= 1 && !note.includes(':')) {
+    return <p className="text-sm text-[var(--color-sumi-black)] leading-relaxed font-semibold">{note}</p>;
+  }
+
+  const sections = [];
+  let currentLabel = "";
+
+  // The split with capturing group preserves the labels.
+  // parts will look like: ["Some prefix ", "Travel", " content", "Tip", " content"]
+  // If it doesn't start with a label, the first part is just text.
+  
+  let i = 0;
+  // Check if first part is a label
+  if (labels.includes(parts[0])) {
+    // Starts with a label
+  } else {
+    // Starts with plain text
+    sections.push({ label: "", content: parts[0] });
+    i = 1;
+  }
+
+  for (; i < parts.length; i += 2) {
+    const label = parts[i];
+    const content = parts[i + 1] || "";
+    sections.push({ label, content: content.trim() });
+  }
+
+  return (
+    <ul className="space-y-1.5 list-none">
+      {sections.map((section, idx) => (
+        <li key={idx} className="flex gap-2 text-sm text-[var(--color-sumi-black)] leading-relaxed">
+          <span className="text-neutral-300 mt-1">•</span>
+          <p className="font-medium">
+            {section.label && <span className="font-extrabold mr-1">{section.label}:</span>}
+            {section.content}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
 const App = () => {
   const [activePart, setActivePart] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -321,9 +383,11 @@ const App = () => {
   const [guideCache, setGuideCache] = useState(() => {
     try {
       const saved = localStorage.getItem('guideCache');
-      return saved ? JSON.parse(saved) : {};
+      const localCache = saved ? JSON.parse(saved) : {};
+      // Merge pre-created guides with local cache, local cache takes precedence if user regenerated
+      return { ...preCreatedGuides, ...localCache };
     } catch {
-      return {};
+      return preCreatedGuides || {};
     }
   });
   const [isPreGenerating, setIsPreGenerating] = useState(false);
@@ -664,177 +728,713 @@ const App = () => {
   };
 
   const itineraryData = [
-    {
-      title: "Part 1: Tokyo East",
-      subtitle: "The Historic & Blooming Heart",
-      dates: "Mar 26 - Mar 28",
-      area: "Ginza / Nihonbashi",
-      hotel: "HOTEL LIVEMAX Tokyo Shintomicho",
-      days: [
-        {
-          date: "Thu, Mar 26",
-          label: "Day 0: Welcome to Tokyo",
-          events: [
-            { time: "14:25", activity: "Haneda Airport (HND) Arrival", type: "transport", transportMode: "public", note: "Welcome! Terminal 3. Clear immigration (approx. 1hr). Transport: Keikyu Line or Monorail to Ginza (35-45 min)." },
-            { time: "17:00", activity: "Hotel Check-in: LIVEMAX Shintomicho", type: "hotel", transportMode: "public", note: "Drop bags and freshen up." },
-            { time: "18:30", activity: "First Meal: Ramen Street", type: "food", transportMode: "walk", note: "Tokyo Ramen Street (Station basement). Rokurinsha for Tsukemen or Soranoiro. Alt: Kagari in Ginza for creamy chicken broth." },
-            { time: "20:00", activity: "Ginza Chuo-dori Evening Walk", type: "walk", transportMode: "walk", note: "Architecture lit up beautifully. Stop at a Konbini (7-Eleven/Lawson) for Egg Salad Sandwich & tea for tomorrow." },
-            { time: "21:30", activity: "Rest & Beat Jet Lag", type: "hotel", transportMode: "walk", note: "Sleep early to adjust to Japan time." }
-          ]
-        },
-        {
-          date: "Fri, Mar 27",
-          label: "Day 1: Old Edo & River Breezes",
-          events: [
-            { time: "07:00", activity: "Senso-ji Temple (Asakusa)", type: "sight", transportMode: "public", note: "Tokyo's oldest temple. The huge red lantern (Kaminarimon) is iconic. Tip: Draw an \"Omikuji\" (fortune) for 100 yen." },
-            { time: "10:00", activity: "Nakamise Dori Snacking", type: "food", transportMode: "walk", note: "Try freshly baked Melonpan at Kagetsudo. Fluffy sweet bread (no actual melon)." },
-            { time: "11:00", activity: "Water Bus to Hamarikyu", type: "transport", transportMode: "walk", note: "Tokyo Cruise boat from Asakusa Pier down Sumida River." },
-            { time: "12:00", activity: "Hama-rikyu Gardens", type: "sight", transportMode: "boat", note: "Edo-period saltwater garden vs skyscrapers. Activity: Matcha and sweet at the island tea house." },
-            { time: "13:30", activity: "Manten Sushi Marunouchi", type: "food", status: "confirmed", transportMode: "public", note: "Logistics: Booked! Incredible Omakase for the price (approx. ¥7,000)." },
-            { time: "15:30", activity: "Ginza Central & Depachika (Food Halls)", type: "walk", transportMode: "taxi", note: "Metro o Taxi desde Akihabara (aprox. 15 min). Cerca de Ginza para cenar. Paseo relajado. Arquitectura: Admiren las fachadas del emblemático edificio Wako con su torre de reloj." },
-            { time: "19:00", activity: "Monjayaki Street (Tsukishima)", type: "food", transportMode: "public", note: "Unique Tokyo savory pancake. Monja Kura is the spot. Order Mentaiko & Cheese version." }
-          ]
-        },
-        {
-          date: "Sat, Mar 28",
-          label: "Day 2: Sakura Explosion",
-          events: [
-            { time: "08:30", activity: "Ueno Park Hanami", type: "sight", transportMode: "public", note: "Hanami ground zero. Thousands of lanterns. Walk the main alley toward the National Museum." },
-            { time: "10:00", activity: "Tokyo National Museum (Ueno Park)", type: "sight", transportMode: "walk", note: "Después del paseo por el parque (o antes de Ameyoko Market). Entrada: Aprox. ¥1,000. Es el museo más grande y antiguo de Japón, con una colección impresionante de arte y artefactos japoneses y asiáticos. Ya están en la puerta; podrían dedicar 1-2 horas para verlo y aprovechar al máximo su tiempo en Ueno." },
-            { time: "11:00", activity: "Ameyoko Market", type: "food", transportMode: "walk", note: "Street food chaos. Seafood bowls at Minatoya or snack on fruit sticks and takoyaki." },
-            { time: "13:30", activity: "Akihabara Electric Town", type: "sight", transportMode: "train", note: "Radio Kaikan (anime) and Gachapon Hall (hundreds of machines). Sensory overload!" },
-            { time: "15:30", activity: "Ginza Central & Depachika (Food Halls)", type: "food", transportMode: "taxi", note: "Metro o Taxi desde Akihabara (aprox. 15 min). Cerca de Ginza para cenar. Paseo relajado. Gastronomía (Cultura): Visiten el sótano Depachika de un gran almacén (como Ginza Mitsukoshi o Daimaru) para ver una increíble exhibición de repostería japonesa, chocolates y exquisiteces gourmet. Es una experiencia cultural en sí misma y una excelente oportunidad para un tentempié ligero antes del sushi." },
-            { time: "18:30", activity: "Sushi Ginza Onodera Tōryūmon", type: "food", transportMode: "public", note: "Standing sushi bar. High Michelin-level quality at a lower price." },
-            { time: "20:00", activity: "teamLab Planets", type: "sight", status: "confirmed", transportMode: "public", note: "Barefoot immersive art experience. Critical booking confirmed!" }
-          ]
-        }
-      ]
-    },
-    {
-      title: "Part 2: Tokyo West",
-      subtitle: "Neon Finale",
-      dates: "Mar 29 - Mar 30",
-      area: "Shinjuku / Shibuya",
-      hotel: "Premier Hotel Cabin Shinjuku",
-      days: [
-        {
-          date: "Sun, Mar 29",
-          label: "Day 3: Digital Art & Wagyu",
-          events: [
-            { time: "08:00", activity: "Tsukiji Outer Market", type: "food", transportMode: "public", note: "Tamagoyaki or wagyu skewer breakfast." },
-            { time: "09:30", activity: "Luggage Check-Out", type: "hotel", transportMode: "walk", note: "Check out of HOTEL LIVEMAX and move bags to Shimbashi/Tokyo Station locker." },
-            { time: "10:30", activity: "Imperial Palace East Gardens", type: "sight", transportMode: "walk", note: "Free admission. Massive stone walls of old Edo castle. Beautiful landscaping." },
-            { time: "12:00", activity: "Chidorigafuchi Moat", type: "sight", transportMode: "public", note: "Classic Sakura postcard shot. Tip: Rowboats if line < 45m, else walk the path." },
-            { time: "13:00", activity: "Retrieve Luggage & Travel", type: "transport", transportMode: "public", note: "Retrieve bags from locker and take subway to Shinjuku." },
-            { time: "14:00", activity: "Quick Lunch & Drop-off Luggage", type: "food", transportMode: "walk", note: "Quick meal near Shinjuku/Shibuya; drop bags at Premier Hotel Cabin Shinjuku." },
-            { time: "15:00", activity: "Shibuya Sky (Booked)", type: "sight", status: "confirmed", transportMode: "public", note: "Logistics: Confirmed booking for 15:20-15:39 slot. Arrive 15 mins early." },
-            { time: "17:00", activity: "The Move & Check-in", type: "hotel", transportMode: "public", note: "Finalize check-in at Premier Hotel Cabin Shinjuku and drop bags." },
-            { time: "20:00", activity: "Dinner: Wagyu Yakiniku Blackhole", type: "food", status: "confirmed", transportMode: "walk", note: "Booked! A5-rank Wagyu. Excellent value. GMaps: https://maps.app.goo.gl/95d4KqfjsG1i83Di8" }
-          ]
-        },
-        {
-          date: "Mon, Mar 30",
-          label: "Day 4: Cats & Golden Gai",
-          events: [
-            { time: "09:00", activity: "Meiji Jingu Shrine", type: "sight", transportMode: "public", note: "Tranquil forest walk. Dedicated to Emperor Meiji. Peaceful contrast to the city." },
-            { time: "11:00", activity: "Gotokuji Cat Temple", type: "sight", transportMode: "public", note: "Thousands of Maneki Neko statues. Photogenic. (40 min from Shinjuku)." },
-            { time: "13:30", activity: "Lunch: AFURI Ramen", type: "food", transportMode: "public", note: "Harajuku/Shinjuku. Famous Yuzu-scented broth. Light and refreshing." },
-            { time: "15:00", activity: "Shinjuku Gyoen Garden", type: "sight", transportMode: "public", note: "Huge park, late-blooming Sakura varieties. Beautiful and peaceful." },
-            { time: "17:00", activity: "Shinjuku 3D Cat & Godzilla", type: "sight", transportMode: "walk", note: "Cross Shinjuku Vision 3D cat and Hotel Gracery Godzilla head." },
-            { time: "18:00", activity: "Tokyo Gov. Building Views", type: "sight", transportMode: "walk", note: "Kenzo Tange complex. Free skyline views from tallest decks." },
-            { time: "20:00", activity: "Omoide Yokocho (Piss Alley)", type: "food", transportMode: "walk", note: "Yakitori stalls, smoke, beer crates. Very authentic atmosphere." },
-            { time: "22:00", activity: "Golden Gai Drinks", type: "food", transportMode: "walk", note: "End night at one of 200 tiny bars. Tip: Ship large luggage to Kyoto tonight!" }
-          ]
-        }
-      ]
-    },
-    {
-      title: "Part 3: Kyoto",
-      subtitle: "The Cultural Heart",
-      dates: "Mar 31 - Apr 3",
-      area: "Sanjo / Kawaramachi",
-      days: [
-        {
-          date: "Tue, Mar 31",
-          label: "Day 5: Shinkansen & Red Gates",
-          events: [
-            { time: "09:00", activity: "Shinkansen to Kyoto", type: "transport", transportMode: "public", note: "Buy a Katsu Sando. Sit on Seat E (Right) for Mt. Fuji views." },
-            { time: "11:30", activity: "Arrival & Drop Backpack", type: "hotel", transportMode: "public", note: "Taxi/subway to hotel to drop bags." },
-            { time: "13:00", activity: "Lunch: Chao Chao Gyoza", type: "food", transportMode: "walk", note: "Award-winning, crispy gyoza near Sanjo/Gion." },
-            { time: "14:30", activity: "Fushimi Inari Taisha", type: "sight", transportMode: "public", note: "Hike past Yotsutsuji intersection (30-40 mins) to escape crowds." },
-            { time: "17:30", activity: "Pontocho Alley Stroll", type: "walk", transportMode: "public", note: "Atmospheric evening stroll down the narrow restaurant alley." },
-            { time: "19:00", activity: "Menbaka Fire Ramen", type: "food", status: "pending", transportMode: "public", note: "Chef creates massive fire column. Tourist spectacle but tasty!" }
-          ]
-        },
-        {
-          date: "Wed, Apr 1",
-          label: "Day 6: Bamboo & Gold",
-          events: [
-            { time: "07:00", activity: "Arashiyama Bamboo Grove", type: "sight", transportMode: "public", note: "Early arrival is spiritual; avoid the 10am nightmare crowds." },
-            { time: "08:30", activity: "Tenryu-ji Garden", type: "sight", transportMode: "walk", note: "Beautiful Zen garden right next to the bamboo exit." },
-            { time: "10:00", activity: "Otagi Nenbutsu-ji", type: "sight", transportMode: "taxi", note: "Hidden gem with 1,200 whimsical stone statues. Mossy and quiet." },
-            { time: "12:30", activity: "Arashiyama Street Food", type: "food", transportMode: "walk", note: "Yuba snack or Soba noodles on the main street." },
-            { time: "14:00", activity: "Kinkaku-ji (Golden Pavilion)", type: "sight", transportMode: "taxi", note: "Classic gold temple reflecting in the pond. Taxi from Arashiyama." },
-            { time: "16:00", activity: "Ryoan-ji Rock Garden", type: "sight", transportMode: "taxi", note: "Optional: Famous Zen rock garden nearby if not templed out." },
-            { time: "20:30", activity: "Giro Giro Hitoshina", type: "food", status: "confirmed", transportMode: "public", note: "Modern affordable Kaiseki. Booked! Look for Geiko in Gion." }
-          ]
-        },
-        {
-          date: "Thu, Apr 2",
-          label: "Day 7: The Philosopher’s Walk",
-          events: [
-            { time: "05:30", activity: "Hokan-ji Temple (Yasaka Pagoda)", type: "sight", transportMode: "walk", note: "Arrive around 5:30am ideally to find it fully empty for incredible photos." },
-            { time: "08:30", activity: "Keage Incline Sakura", type: "sight", transportMode: "public", note: "Old railway tracks lined with Sakura. Stunning photo spot." },
-            { time: "09:30", activity: "Nanzen-ji Temple", type: "sight", transportMode: "walk", note: "Massive Sanmon gate and Roman-style brick aqueduct." },
-            { time: "10:30", activity: "Philosopher's Path", type: "walk", transportMode: "walk", note: "Canal lined with hundreds of cherry trees. Quintessential spring walk." },
-            { time: "13:00", activity: "Udon near Ginkaku-ji", type: "food", transportMode: "walk", note: "Omen is famous for Udon at the end of the path." },
-            { time: "14:30", activity: "Kiyomizu-dera Temple", type: "sight", transportMode: "taxi", note: "Massive wooden stage views. Taxi from Ginkaku-ji hill." },
-            { time: "16:00", activity: "Sannen-zaka & Ninen-zaka", type: "walk", transportMode: "walk", note: "Preserved stone streets. Visit Starbucks tatami house." },
-            { time: "16:30", activity: "Miyako Odori Geiko Dance", type: "sight", status: "confirmed", transportMode: "walk", note: "Gion Kobu Kaburenjo Theatre. Performance by Geiko/Maiko." },
-            { time: "19:00", activity: "Dinner: Yakiniku Hiro", type: "food", transportMode: "walk", note: "Kyoto style BBQ. Order the Yukke (tartare)." },
-            { time: "Night", activity: "Nijo Castle (Digital Art)", type: "sight", transportMode: "public", note: "NAKED FLOWERS evening event inside the castle. Visual spectacle." }
-          ]
-        },
-        {
-          date: "Fri, Apr 3",
-          label: "Day 8: Nara & Uji Day Trip",
-          events: [
-            { time: "09:00", activity: "Train to Nara", type: "transport", transportMode: "public", note: "Take the Kintetsu Line (faster/closer to the park than JR) (aprox. 55 min). You do not need to buy train tickets from Osaka to Nara in advance for regular trains. Trains, such as the Kintetsu line from Namba or JR line from Osaka/Tennoji, run every 10–15 minutes, and you can simply use an IC card (Suica/Pasmo/ICOCA)." },
-            { time: "10:00", activity: "Nara Park", type: "sight", transportMode: "public", note: "Activity: Buy shika-senbei (deer crackers) for ¥200 and bow to the free-roaming deer." },
-            { time: "11:30", activity: "Todai-ji Temple (Daibutsuden)", type: "sight", transportMode: "walk", note: "Why: Largest wooden building in the world housing the Great Buddha (Daibutsu). It is awe-inspiring. Approx. ¥600." },
-            { time: "13:00", activity: "Nakatanidou Mochi", type: "food", transportMode: "walk", note: "Watch: The famous high-speed mochi pounders. Eat a warm, green mugwort mochi." },
-            { time: "14:00", activity: "Train to Uji", type: "transport", transportMode: "public", note: "Transport: Go to JR Nara Station and take the JR Nara Line towards Kyoto. Uji is a perfect stop on the way back (approx. 30 min ride)." },
-            { time: "14:45", activity: "Byodo-in Temple", type: "sight", transportMode: "public", note: "Architecture: Visit this spectacular UNESCO World Heritage Site. The Phoenix Hall is featured on the back of the Japanese ¥10 coin. Admission: Approx. ¥700." },
-            { time: "16:00", activity: "Uji Bridge & Matcha Shops", type: "food", transportMode: "walk", note: "Experience: Uji is the source of Japan's best Matcha. Stroll across the ancient Uji Bridge and indulge in the local specialty—matcha ice cream, parfait, or high-quality loose-leaf tea. Recommendation: Nakamura Tokichi or Tsujiri Main Shop." },
-            { time: "17:30", activity: "Return to Kyoto", type: "transport", transportMode: "public", note: "Take the JR Nara Line directly back to Kyoto Station (approx. 20 min)." },
-            { time: "18:00", activity: "Nishiki Market (Early Dinner/Snacks)", type: "food", transportMode: "public", note: "The market closes around 17:30-18:00, but many restaurants inside stay open. Or head back to Pontocho for a final Kyoto drink." }
-          ]
-        }
-      ]
-    },
-    {
-      title: "Part 4: Osaka",
-      subtitle: "The Kitchen of Japan",
-      dates: "Apr 4 - Apr 5",
-      area: "Namba / Dotonbori",
-      hotel: "Hotel Balian Resort Namba",
-      days: [
-        {
-          date: "Sat, Apr 4",
-          label: "Day 9: Castles & Neon",
-          events: [
-            { time: "09:30", activity: "Train to Osaka", type: "transport", transportMode: "public", note: "Take the JR Special Rapid or Hankyu line. 30-45 mins." },
-            { time: "10:30", activity: "Check-in: Hotel Balian Resort Namba", type: "hotel", transportMode: "train", note: "Take JR or Hankyu to Namba (45m). Drop bags." },
-            { time: "11:30", activity: "Umeda Sky Building (Floating Garden Observatory)", type: "sight", transportMode: "public", note: "Travel: Take the Midosuji Subway Line from Namba to Umeda Station (approx. 20-30 min total). Why: An iconic piece of modern architecture connecting two towers. The open-air deck offers a spectacular 360-degree view of the city, perfect for watching the sunset over Osaka. Tip: Aim to arrive 45 minutes before the official sunset time for the best light." },
-            { time: "14:00", activity: "Osaka Castle", type: "sight", transportMode: "public", note: "Walk the park grounds. The castle looks majestic from the outside (the inside is a modern museum, skip if short on time)." },
-            { time: "16:00", activity: "Shinsekai District (Lunch)", type: "food", transportMode: "public", note: "Eat: Kushikatsu (fried skewers) at Daruma. Vibe: Retro-futuristic, nostalgic Japan." },
-            { time: "18:00", activity: "Osaka Night Free Walking Tour (2 hours)", type: "sight", status: "confirmed", transportMode: "public", note: "Gathering: Starts under the Giant Penguin of MEGA Don Quijote Shinsekai. Booked. Experience: Uncover a different side of Japan, exploring Osaka's historic 'getto' area and its largest red-light district, delving into the hidden and shadowed aspects of Japanese society." },
-            { time: "20:00", activity: "Dotonbori Night", type: "sight", transportMode: "public", note: "Activity: Walk to the canal. See the famous Glico Man sign and the giant crab/octopus signs. Dinner: This is your farewell feast. Option A (Beef): Matsusakaagyu Yakiniku M. Option B (Crab): Kani Doraku (the giant crab sign). Option C (Street Food): Takoyaki (octopus balls) and Okonomiyaki (pancakes) from a street stall." }
-          ]
-        }
-      ]
-    }
-  ];
+  {
+    "title": "Part 1: Tokyo East (The Historic & Blooming Heart)",
+    "subtitle": "Stay: 3 Nights.",
+    "dates": "",
+    "area": "Ginza, Nihonbashi, or Tokyo Station area.",
+    "days": [
+      {
+        "date": "Thu, Mar 26",
+        "label": "Day 0: Welcome to Tokyo",
+        "events": [
+          {
+            "time": "14:25",
+            "activity": "Touchdown at Haneda (HND)",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Welcome! You land at Terminal 3. Clear immigration (approx. 1 hour). Transport: Take the Keikyu Line or Tokyo Monorail, depending on your specific hotel location in Ginza/Nihonbashi. It takes about 35\u201345 minutes.",
+            "status": "pending"
+          },
+          {
+            "time": "17:00",
+            "activity": "Hotel Check-in: HOTEL LIVEMAX Tokyo Shintomicho",
+            "type": "hotel",
+            "transportMode": "public",
+            "note": "Drop bags and freshen up.",
+            "status": ""
+          },
+          {
+            "time": "18:30",
+            "activity": "First Meal: Ramen Street or Yakitori",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Where: If staying near Tokyo Station, head to \"Tokyo Ramen Street\" in the basement. Recommendation: Rokurinsha for Tsukemen (dipping noodles) if the line isn't too crazy, or Soranoiro for a lighter option. Alternative: Tatsunoya Ramen in Shinjuku is famous, but since you are in the East, look for Kagari in Ginza (famous creamy chicken broth).",
+            "status": ""
+          },
+          {
+            "time": "20:00",
+            "activity": "Easy Evening Walk",
+            "type": "walk",
+            "transportMode": "walk",
+            "note": "Walk through Ginza Chuo-dori. The architecture is lit up beautifully. Stop at a Konbini (7-Eleven/Lawson) to buy an Egg Salad Sandwich and tea for tomorrow morning.",
+            "status": ""
+          },
+          {
+            "time": "21:30",
+            "activity": "Rest",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "You need to beat jet lag. Sleep early.",
+            "status": ""
+          }
+        ]
+      },
+      {
+        "date": "Fri, Mar 27",
+        "label": "Day 1: Old Edo & River Breezes",
+        "events": [
+          {
+            "time": "07:00",
+            "activity": "Senso-ji Temple (Asakusa)",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Why: Tokyo\u2019s oldest temple. The huge red lantern (Kaminarimon) is iconic. Tip: Draw an \"Omikuji\" (fortune) for 100 yen.",
+            "status": ""
+          },
+          {
+            "time": "10:00",
+            "activity": "Nakamise Dori Snacking",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Try a freshly baked Melonpan at Kagetsudo. It\u2019s sweet, fluffy bread (no actual melon).",
+            "status": ""
+          },
+          {
+            "time": "11:00",
+            "activity": "Water Bus to Hamarikyu",
+            "type": "transport",
+            "transportMode": "boat",
+            "note": "Take the \"Tokyo Cruise\" boat from Asakusa Pier down the Sumida River to Hamarikyu Gardens.",
+            "status": ""
+          },
+          {
+            "time": "12:00",
+            "activity": "Hama-rikyu Gardens",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Why: An Edo-period saltwater garden surrounded by modern skyscrapers. Activity: Have Matcha and a sweet at the tea house on the island in the middle of the pond.",
+            "status": ""
+          },
+          {
+            "time": "13:30",
+            "activity": "Lunch: Manten Sushi (Marunouchi/Nihonbashi)",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Logistics: Booked and confirmed 1 month ahead. Done! Why: Incredible Omakase for the price (approx. \u00a57,000).",
+            "status": "confirmed"
+          },
+          {
+            "time": "15:30",
+            "activity": "Ginza Central & Depachika (Food Halls)",
+            "type": "food",
+            "transportMode": "taxi",
+            "note": "Metro o Taxi desde Akihabara (aprox. 15 min). Cerca de Ginza para cenar. Paseo relajado. Arquitectura: Admiren las fachadas del emblem\u00e1tico edificio Wako con su torre de reloj.",
+            "status": ""
+          },
+          {
+            "time": "19:00",
+            "activity": "Dinner: Monjayaki Street (Tsukishima)",
+            "type": "food",
+            "transportMode": "taxi",
+            "note": "Travel: Short metro ride or taxi to Tsukishima. Experience: \"Monjayaki\" is a gooey, savory pancake unique to Tokyo. Go to Monja Kura. Order the \"Mentaiko & Cheese\" version. It looks messy but tastes divine.",
+            "status": ""
+          }
+        ]
+      },
+      {
+        "date": "Sat, Mar 28",
+        "label": "Day 2: The Sakura Explosion",
+        "events": [
+          {
+            "time": "08:30",
+            "activity": "Ueno Park",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Vibe: \"Hanami\" ground zero. Thousands of lanterns and people picnicking under trees. Walk the main alley toward the National Museum. [Maybe] Tokyo National Museum (Ueno Park): Despu\u00e9s del paseo por el parque (o antes de Ameyoko Market). Entrada: Aprox. \u00a51,000. Es el museo m\u00e1s grande y antiguo de Jap\u00f3n, con una colecci\u00f3n impresionante de arte y artefactos japoneses y asi\u00e1ticos. Ya est\u00e1n en la puerta; podr\u00edan dedicar 1-2 horas para verlo y aprovechar al m\u00e1ximo su tiempo en Ueno.",
+            "status": ""
+          },
+          {
+            "time": "11:00",
+            "activity": "Ameyoko Market",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Lunch: Street food chaos. Grab a cheap seafood bowl (Kaisen-don) at Minatoya or just snack on fruit sticks and takoyaki.",
+            "status": ""
+          },
+          {
+            "time": "13:30",
+            "activity": "Akihabara Electric Town",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Travel: 2 km walk or short train from Ueno. Visit: Radio Kaikan for anime figures and Gachapon Hall (hundreds of capsule toy machines). It is a sensory overload in the best way.",
+            "status": ""
+          },
+          {
+            "time": "15:30",
+            "activity": "Ginza Central & Depachika (Food Halls)",
+            "type": "food",
+            "transportMode": "taxi",
+            "note": "Metro o Taxi desde Akihabara (aprox. 15 min). Cerca de Ginza para cenar. Paseo relajado. Gastronom\u00eda (Cultura): Visiten el s\u00f3tano Depachika de un gran almac\u00e9n (como Ginza Mitsukoshi o Daimaru) para ver una incre\u00edble exhibici\u00f3n de reposter\u00eda japonesa, chocolates y exquisiteces gourmet. Es una experiencia cultural en s\u00ed misma y una excelente oportunidad para un tentempi\u00e9 ligero antes del sushi.",
+            "status": ""
+          },
+          {
+            "time": "18:30",
+            "activity": "Dinner: Sushi Ginza Onodera T\u014dry\u016bmon",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Why: A standing sushi bar run by apprentices of a Michelin-starred chef. High quality, lower price.",
+            "status": ""
+          },
+          {
+            "time": "20:00",
+            "activity": "teamLab Planets (Toyosu)",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "An unforgettable, barefoot, immersive art experience with water features. Logistics: Critical booking! Your reservation must be for this time - DONE!",
+            "status": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Part 2: Tokyo West (Neon Finale)",
+    "subtitle": "Stay: 2 Nights.",
+    "dates": "",
+    "area": "Shinjuku or Shibuya.",
+    "days": [
+      {
+        "date": "Sun, Mar 29",
+        "label": "Day 3: Digital Art, East Tokyo Finale & Wagyu",
+        "events": [
+          {
+            "time": "08:00",
+            "activity": "Tsukiji Outer Market",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Eat: Grab a quick, fresh breakfast like Tamagoyaki (sweet egg omelet) or a wagyu skewer. Tip: You checked out of your East hotel this morning, so leave your luggage at reception or in a coin locker near Shimbashi Station for now. 9:30 | Luggage Check-Out Check out of HOTEL LIVEMAX Tokyo Shintomicho and move your luggage to a coin locker at Shimbashi Station (close to your last hotel/Tsukiji) or Tokyo Station for the morning activities.",
+            "status": ""
+          },
+          {
+            "time": "10:30",
+            "activity": "Imperial Palace East Gardens (Free)",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Walk off the sushi. See the massive stone walls of the old Edo castle. A relaxing walk through the former grounds of Edo Castle, featuring the massive stone foundations of the main keep. Tip: This is free and offers beautiful architecture and landscaping.",
+            "status": ""
+          },
+          {
+            "time": "12:00",
+            "activity": "Chidorigafuchi Moat",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Travel: Metro to Kudanshita Station. Highlight: The classic Tokyo postcard shot. Hundreds of Sakura trees hang over the Imperial Palace moat. Tip: If the line for rowboats is under 45 mins, do it. If not, just walk the path.",
+            "status": ""
+          },
+          {
+            "time": "13:00",
+            "activity": "Retrieve Luggage & Travel",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Action: Retrieve your bags from the locker (e.g., Shimbashi). Take the subway to Shinjuku (your next hotel area). This is your mandatory move to the West side of Tokyo.",
+            "status": ""
+          },
+          {
+            "time": "14:00",
+            "activity": "Quick Lunch near Shinjuku/Shibuya & Drop-off Luggage",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Action: Go straight to Premier Hotel Cabin Shinjuku. Even if your room is not ready, the staff will store your bags for you. You are now luggage-free. Eat: Grab a quick, easy meal near your new area (e.g., in a Shinjuku station department store food hall, or a quick ramen/soba shop).",
+            "status": ""
+          },
+          {
+            "time": "15:00",
+            "activity": "Shibuya Sky (Booked)",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Logistics: Confirmed booking for 15:20-15:39 slot. Arrive 15 minutes early to start the queue. This is not the sunset slot, but it offers a great afternoon view. Travel: Take the subway from Shinjuku to Shibuya.",
+            "status": "confirmed"
+          },
+          {
+            "time": "17:00",
+            "activity": "The Move & Check-in",
+            "type": "transport",
+            "transportMode": "public",
+            "note": "Logistics: Travel from Shibuya to Premier Hotel Cabin Shinjuku (approx. 15-20 mins). Check in and drop your bags. This time avoids the hectic travel and luggage hassle from your old hotel.",
+            "status": ""
+          },
+          {
+            "time": "20:00",
+            "activity": "Dinner: Wagyu Yakiniku Blackhole (Booked)",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Eat: It is highly regarded on local Japanese food sites for offering excellent A5-rank Wagyu and a great value lunch set menu. The dinner menu is more reasonably priced than the higher-end chains. GMaps: https://maps.app.goo.gl/95d4KqfjsG1i83Di8",
+            "status": "confirmed"
+          }
+        ]
+      },
+      {
+        "date": "Mon, Mar 30",
+        "label": "Day 4: Cats, Forests & Golden Gai",
+        "events": [
+          {
+            "time": "09:00",
+            "activity": "Meiji Jingu Shrine",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Start your day with a tranquil walk through this massive, forested Shinto shrine dedicated to Emperor Meiji. It is a peaceful contrast to the city.",
+            "status": ""
+          },
+          {
+            "time": "11:00",
+            "activity": "Gotokuji Temple (The Cat Temple)",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Travel: Take the Odakyu line to Gotokuji Station (aprox. 40 min from Shinjuku). Why: Thousands of \"Maneki Neko\" (waving cat) statues. It is unique and very photogenic.",
+            "status": ""
+          },
+          {
+            "time": "13:30",
+            "activity": "Lunch: AFURI Ramen (Shinjuku/Harajuku)",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Famous for their Yuzu-scented broth. Light and refreshing.",
+            "status": ""
+          },
+          {
+            "time": "15:00",
+            "activity": "Shinjuku Gyoen National Garden",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "If the Sakura is late, this park has late-blooming varieties. It is huge and beautiful.",
+            "status": ""
+          },
+          {
+            "time": "17:00",
+            "activity": "Shinjuku 3D Cat & Godzilla",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Walk past the Cross Shinjuku Vision (3D Cat billboard) and the Hotel Gracery (Godzilla head).",
+            "status": ""
+          },
+          {
+            "time": "18:00",
+            "activity": "Tokyo Metropolitan Government Building",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Kenzo Tange-designed City Hall complex with views from the tallest building's observation decks.",
+            "status": ""
+          },
+          {
+            "time": "20:00",
+            "activity": "Dinner: Omoide Yokocho (Piss Alley)",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Tiny yakitori stalls, smoke, beer crates. Very authentic. Don't let the nickname scare you.",
+            "status": ""
+          },
+          {
+            "time": "22:00",
+            "activity": "Golden Gai",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Drink: End the night with a highball in one of the 200 tiny bars packed into a few alleyways. IMPORTANT: Ask your hotel to ship your large luggage to Kyoto tonight. Pack a small backpack for tomorrow's travel.",
+            "status": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Part 3: Kyoto (The Cultural Heart)",
+    "subtitle": "Stay: 4 Nights.",
+    "dates": "",
+    "area": "Sanjo or Kawaramachi (Central).",
+    "days": [
+      {
+        "date": "Tue, Mar 31",
+        "label": "Day 5: The Shinkansen & Red Gates",
+        "events": [
+          {
+            "time": "09:00",
+            "activity": "Shinkansen to Kyoto",
+            "type": "transport",
+            "transportMode": "public",
+            "note": "Depart Tokyo or Shinagawa Station. Tip: Buy a \"Katsu Sando\" (Pork sandwich) at the station. Sit on the Right side (Seat E) for Mt. Fuji views.",
+            "status": ""
+          },
+          {
+            "time": "11:30",
+            "activity": "Arrival & Check-in",
+            "type": "transport",
+            "transportMode": "taxi",
+            "note": "Arrive Kyoto Station. Take a taxi/subway to your hotel to drop your backpack if needed.",
+            "status": ""
+          },
+          {
+            "time": "13:00",
+            "activity": "Lunch: Chao Chao Gyoza",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Near Sanjo/Gion area. Award-winning, crispy gyoza.",
+            "status": ""
+          },
+          {
+            "time": "14:30",
+            "activity": "Fushimi Inari Taisha",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Strategy: Thousands of red Torii gates. Most tourists stop at the bottom. Hike up past the \"Yotsutsuji\" intersection (about 30-40 mins up) and the crowd disappears.",
+            "status": ""
+          },
+          {
+            "time": "17:30",
+            "activity": "Pontocho Alley Stroll",
+            "type": "walk",
+            "transportMode": "public",
+            "note": "Narrow alleyway packed with restaurants along the river. Very atmospheric.",
+            "status": ""
+          },
+          {
+            "time": "19:00",
+            "activity": "Dinner: Menbaka Fire Ramen",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Experience: The chef creates a massive fire column over your bowl. It\u2019s a tourist spectacle, but the onion-flavored ramen is actually tasty, and it\u2019s great fun. PENDING",
+            "status": "pending"
+          }
+        ]
+      },
+      {
+        "date": "Wed, Apr 1",
+        "label": "Day 6: Bamboo & Gold",
+        "events": [
+          {
+            "time": "07:00",
+            "activity": "Arashiyama Bamboo Grove",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Why Early? At 10 AM it is a crushed nightmare. At 7 AM it is spiritual.",
+            "status": ""
+          },
+          {
+            "time": "08:30",
+            "activity": "Tenryu-ji Garden",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Beautiful Zen garden right next to the bamboo exit.",
+            "status": ""
+          },
+          {
+            "time": "10:00",
+            "activity": "Otagi Nenbutsu-ji",
+            "type": "sight",
+            "transportMode": "taxi",
+            "note": "Travel: Take a short taxi ride north (don't walk, it's far). Why: A hidden gem with 1,200 whimsical stone statues covered in moss.",
+            "status": ""
+          },
+          {
+            "time": "12:30",
+            "activity": "Lunch: Arashiyama Street Food or Soba",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Grab a Yuba (tofu skin) snack or noodles in the main street.",
+            "status": ""
+          },
+          {
+            "time": "14:00",
+            "activity": "Kinkaku-ji (Golden Pavilion)",
+            "type": "sight",
+            "transportMode": "taxi",
+            "note": "Travel: Taxi from Arashiyama (Bus takes too long). Photo: The classic gold temple reflecting in the pond.",
+            "status": ""
+          },
+          {
+            "time": "16:00",
+            "activity": "Ryoan-ji (Optional)",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Famous rock garden nearby if you aren't \"templed out.\"",
+            "status": ""
+          },
+          {
+            "time": "20:30",
+            "activity": "Giro Giro Hitoshina (Dinner: Gion District)",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Booked: (Kaiseki, which is a traditional multi-course. 2 people = \u00a513,168). Keep an eye out for Geiko/Maiko on their way to appointments.",
+            "status": "confirmed"
+          }
+        ]
+      },
+      {
+        "date": "Thu, Apr 2",
+        "label": "Day 7: The Philosopher\u2019s Walk + Miyako Odori (Sakura Peak)",
+        "events": [
+          {
+            "time": "08:30",
+            "activity": "Keage Incline",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Photo Spot: Old railway tracks lined with Sakura trees. Stunning.",
+            "status": ""
+          },
+          {
+            "time": "09:30",
+            "activity": "Nanzen-ji Temple",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "See the massive wooden Sanmon gate and the brick aqueduct (strange Roman style in a Japanese temple).",
+            "status": ""
+          },
+          {
+            "time": "10:30",
+            "activity": "Philosopher\u2019s Path",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Walk from Nanzen-ji towards Ginkaku-ji. A canal lined with hundreds of cherry trees. This is the quintessential Kyoto spring walk.",
+            "status": ""
+          },
+          {
+            "time": "13:00",
+            "activity": "Lunch: Udon near Ginkaku-ji",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Omen is a famous Udon shop near the end of the path.",
+            "status": ""
+          },
+          {
+            "time": "14:30",
+            "activity": "Kiyomizu-dera Temple",
+            "type": "sight",
+            "transportMode": "taxi",
+            "note": "Travel: Take a taxi (approx. 20-30 minutes) from the Ginkaku-ji area to the bottom of the hill. View: The massive wooden stage looking over the city.",
+            "status": ""
+          },
+          {
+            "time": "16:00",
+            "activity": "Sannen-zaka & Ninen-zaka",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Walk downhill through these preserved stone streets and continue toward Gion. Visit the Starbucks inside an old Tatami house (world's only one).",
+            "status": ""
+          },
+          {
+            "time": "16:30",
+            "activity": "The 152nd Miyako Odori (Geiko Dances) (Booked)",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Venue: Gion Kobu Kaburenjo Theatre. A cultural highlight and performance by Geiko and Maiko. (Tickets booked in advance already; no tea ceremony which requires to arrive earlier).",
+            "status": "confirmed"
+          },
+          {
+            "time": "19:00",
+            "activity": "Dinner: Yakiniku Hiro (Kyoto Style)",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Order the Yukke (tartare) and varied beef cuts. Digital Art + Sakura: Nijo Castle: evento por la noche (NAKED FLOWERS) durante la temporada. Muy visual y moderno dentro del castillo. Altamente recomendado incluirlo.",
+            "status": ""
+          }
+        ]
+      },
+      {
+        "date": "Fri, Apr 3",
+        "label": "Day 8: Deer, Buddhas & Matcha (Nara & Uji Day Trip)",
+        "events": [
+          {
+            "time": "09:00",
+            "activity": "Train to Nara",
+            "type": "transport",
+            "transportMode": "public",
+            "note": "Take the Kintetsu Line (faster/closer to the park than JR) (aprox. 55 min). You do not need to buy train tickets from Osaka to Nara in advance for regular trains. Trains, such as the Kintetsu line from Namba or JR line from Osaka/Tennoji, run every 10\u201315 minutes, and you can simply use an IC card (Suica/Pasmo/ICOCA).",
+            "status": ""
+          },
+          {
+            "time": "10:00",
+            "activity": "Nara Park",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Activity: Buy shika-senbei (deer crackers) for \u00a5200 and bow to the free-roaming deer.",
+            "status": ""
+          },
+          {
+            "time": "11:30",
+            "activity": "Todai-ji Temple (Daibutsuden)",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Why: Largest wooden building in the world housing the Great Buddha (Daibutsu). It is awe-inspiring. Approx. \u00a5600.",
+            "status": ""
+          },
+          {
+            "time": "13:00",
+            "activity": "Nakatanidou Mochi",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Watch: The famous high-speed mochi pounders. Eat a warm, green mugwort mochi.",
+            "status": ""
+          },
+          {
+            "time": "14:00",
+            "activity": "Train to Uji",
+            "type": "transport",
+            "transportMode": "public",
+            "note": "Transport: Go to JR Nara Station and take the JR Nara Line towards Kyoto. Uji is a perfect stop on the way back (approx. 30 min ride).",
+            "status": ""
+          },
+          {
+            "time": "14:45",
+            "activity": "Byodo-in Temple",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Architecture: Visit this spectacular UNESCO World Heritage Site. The Phoenix Hall is featured on the back of the Japanese \u00a510 coin. Admission: Approx. \u00a5700.",
+            "status": ""
+          },
+          {
+            "time": "16:00",
+            "activity": "Uji Bridge & Matcha Shops",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Experience: Uji is the source of Japan's best Matcha. Stroll across the ancient Uji Bridge and indulge in the local specialty\u2014matcha ice cream, parfait, or high-quality loose-leaf tea. Recommendation: Nakamura Tokichi or Tsujiri Main Shop.",
+            "status": ""
+          },
+          {
+            "time": "17:30",
+            "activity": "Return to Kyoto",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Take the JR Nara Line directly back to Kyoto Station (approx. 20 min).",
+            "status": ""
+          },
+          {
+            "time": "18:00",
+            "activity": "Nishiki Market (Early Dinner/Snacks)",
+            "type": "food",
+            "transportMode": "public",
+            "note": "The market closes around 17:30-18:00, but many restaurants inside stay open. Or head back to Pontocho for a final Kyoto drink. Task: Pack bags. We move to Osaka tomorrow.",
+            "status": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Part 4: Osaka (The Kitchen of Japan)",
+    "subtitle": "Stay: 1 Night.",
+    "dates": "",
+    "area": "",
+    "days": [
+      {
+        "date": "Sat, Apr 4",
+        "label": "Day 9: Castles, Neon & Osaka's Modern View",
+        "events": [
+          {
+            "time": "09:30",
+            "activity": "Train to Osaka",
+            "type": "transport",
+            "transportMode": "public",
+            "note": "Take the JR Special Rapid or Hankyu line. 30-45 mins.",
+            "status": ""
+          },
+          {
+            "time": "10:30",
+            "activity": "Check-in",
+            "type": "hotel",
+            "transportMode": "public",
+            "note": "\u200b\u200b\u200b\u200bHotel: Hotel Balian Resort Namba Shinsaibashi. Check in and drop bags. Ryokan: If possible, look for Kaneyoshi Ryokan (near Dotonbori) or Yamatoya Honten. If those are booked, try Onyado Nono Namba (a hotel that feels like a Ryokan with tatami floors and onsen).",
+            "status": "confirmed"
+          },
+          {
+            "time": "11:30",
+            "activity": "Umeda Sky Building (Floating Garden Observatory)",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Travel: Take the Midosuji Subway Line from Namba to Umeda Station (approx. 20-30 min total). Why: An iconic piece of modern architecture connecting two towers. The open-air deck offers a spectacular 360-degree view of the city, perfect for watching the sunset over Osaka. Tip: Aim to arrive 45 minutes before the official sunset time for the best light.",
+            "status": ""
+          },
+          {
+            "time": "14:00",
+            "activity": "Osaka Castle",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Walk the park grounds. The castle looks majestic from the outside (the inside is a modern museum, skip if short on time).",
+            "status": ""
+          },
+          {
+            "time": "16:00",
+            "activity": "Shinsekai District (Lunch)",
+            "type": "food",
+            "transportMode": "public",
+            "note": "Eat: Kushikatsu (fried skewers) at Daruma. Vibe: Retro-futuristic, nostalgic Japan.",
+            "status": ""
+          },
+          {
+            "time": "18:00",
+            "activity": "Osaka Night Free Walking Tour (2 hours)",
+            "type": "walk",
+            "transportMode": "public",
+            "note": "Gathering: Starts under the Giant Penguin of MEGA Don Quijote Shinsekai. Booked. Experience: Uncover a different side of Japan, exploring Osaka's historic 'getto' area and its largest red-light district, delving into the hidden and shadowed aspects of Japanese society. Kuromon Market: \"Osaka's Kitchen.\" Try grilled scallops or Kobe beef bits. It is very active in the morning. We could skip Kuromon if we have already eaten a lot and focus on Shinsekai and Dotonbori, which are the true night focus of the city. The market closes early (around 18:00).",
+            "status": "confirmed"
+          },
+          {
+            "time": "20:00",
+            "activity": "Dotonbori Night",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Activity: Walk to the canal. See the famous Glico Man sign and the giant crab/octopus signs. Dinner: This is your farewell feast. Option A (Beef): Matsusakaagyu Yakiniku M. Option B (Crab): Kani Doraku (the giant crab sign). Option C (Street Food): Takoyaki (octopus balls) and Okonomiyaki (pancakes) from a street stall.",
+            "status": ""
+          },
+          {
+            "time": "22:00",
+            "activity": "Bed",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Early start tomorrow!",
+            "status": ""
+          }
+        ]
+      },
+      {
+        "date": "Sun, Apr 5",
+        "label": "Day 10: Sayonara",
+        "events": [
+          {
+            "time": "06:00",
+            "activity": "Checkout",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "",
+            "status": ""
+          },
+          {
+            "time": "06:30",
+            "activity": "Train to KIX",
+            "type": "transport",
+            "transportMode": "public",
+            "note": "Take the Nankai Rapi:t (from Namba) or Haruka Express (from Tennoji/Shin-Osaka). It takes ~40-50 mins.",
+            "status": ""
+          },
+          {
+            "time": "07:30",
+            "activity": "Arrive Kansai Airport (KIX)",
+            "type": "transport",
+            "transportMode": "public",
+            "note": "Check in for Air China CA162.",
+            "status": ""
+          },
+          {
+            "time": "09:05",
+            "activity": "Flight Departs",
+            "type": "transport",
+            "transportMode": "public",
+            "note": "Fly to Beijing, then connect to Madrid. Arrive in Madrid at 21:00 the same day.",
+            "status": ""
+          }
+        ]
+      }
+    ]
+  }
+];
 
   const getTypeIcon = (type) => {
     switch (type) {
@@ -1242,6 +1842,12 @@ const App = () => {
                                   <span className="text-[9px] font-bold text-green-700 uppercase tracking-wider">Confirmed</span>
                                 </div>
                               )}
+                              {event.status === 'pending' && (
+                                <div className="px-2 py-0.5 bg-amber-50 rounded-full flex items-center justify-center border border-amber-200">
+                                  <AlertCircle size={10} className="text-amber-500 mr-1" />
+                                  <span className="text-[9px] font-bold text-amber-700 uppercase tracking-wider">Pending</span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="inline-flex items-center px-2 py-1 rounded-md bg-[var(--color-bg-primary)] text-[9px] font-bold text-neutral-500 uppercase tracking-widest border border-neutral-100 hover:border-neutral-200 transition-colors">
@@ -1268,26 +1874,7 @@ const App = () => {
                                 </p>
                               ) : (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                  <div className="flex gap-3">
-                                    <div className="w-1.5 rounded-full bg-[var(--color-border-light)] mb-1"></div>
-                                    <p className="text-sm text-[var(--color-sumi-black)] leading-relaxed font-semibold">
-                                      {event.note}
-                                    </p>
-                                  </div>
-
-                                  <div className="bg-[var(--color-bg-primary)] rounded-2xl p-4 border border-[var(--color-border-light)]/50">
-                                    <h6 className="flex items-center gap-1.5 font-bold text-[var(--color-accent-pink)] uppercase tracking-widest text-[10px] mb-3">
-                                      <Info size={12} /> Pro Tips & Info
-                                    </h6>
-                                    <ul className="space-y-2">
-                                      {getActivityRecommendations(event.activity).map((rec, i) => (
-                                        <li key={i} className="flex gap-2 text-xs text-[var(--color-sumi-gray)] leading-snug">
-                                          <span className="text-[var(--color-accent-pink)] mt-0.5 opacity-50">•</span>
-                                          <span className="font-medium">{rec}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
+                                  <NoteRenderer note={event.note} />
 
                                   <AudioGuide
                                     placeName={event.activity}

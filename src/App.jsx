@@ -31,7 +31,9 @@ import {
   Rewind,
   Headphones,
   Loader2,
-  Settings2
+  Settings2,
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 import preCreatedGuides from './data/guides.json';
 
@@ -332,7 +334,6 @@ const NoteRenderer = ({ note }) => {
   }
 
   const sections = [];
-  let currentLabel = "";
 
   // The split with capturing group preserves the labels.
   // parts will look like: ["Some prefix ", "Travel", " content", "Tip", " content"]
@@ -367,6 +368,139 @@ const NoteRenderer = ({ note }) => {
       ))}
     </ul>
   );
+};
+
+const getActivityRecommendations = (activity) => {
+  if (!activity) return [];
+
+  const recs = {
+    "Haneda": ["Have your Visit Japan Web QR code ready on screen", "Pick up a Welcome Suica or Pasmo Passport at the station", "Use airport baggage delivery (Kuroneko Yamato) if you have large suitcases"],
+    "Shintomicho": ["Check if they provide pajamas (many Japanese hotels do)", "Familiarize yourself with the nearest subway exits"],
+    "Ramen Street": ["Expect a 20-30 min queue for Rokurinsha", "Buy your ticket from the vending machine first"],
+    "Ginza": ["Visit Uniqlo's global flagship store", "Itoya stationery store is a must-visit nearby"],
+    "Senso-ji": ["Buy an Omikuji (paper fortune) for 100 yen", "If you get a bad fortune, tie it to the racks to leave the bad luck behind", "Experience the incense smoke at the main cauldron for good health"],
+    "Nakamise": ["Don't walk and eat! Eat at the stall where you bought the food", "Try the Ningyoyaki (sweet bean cakes) and fresh Agemanju"],
+    "Asakusa Pier": ["Sit on the right side for better views of Skytree", "Get tickets in advance online if possible"],
+    "Hama-rikyu": ["Enjoy matcha set at the Nakajima-no-ochaya tea house", "Notice the tide-water pond which changes level with Tokyo Bay"],
+    "Manten Sushi": ["Trust the chef (Omakase style)", "No need for extra soy sauce, pieces are pre-seasoned"],
+    "Monjayaki": ["Let the staff cook it for you if it's your first time", "Use the tiny spatulas to scrape and eat directly from the grill"],
+    "Ueno Park": ["Bring a leisure sheet (picnic mat) to sit on", "Grab some bentos and drinks from a nearby conbini beforehand"],
+    "Ameyoko": ["Bargaining is possible here (rare for Japan!)", "Try the fresh fruit skewers and Takoyaki"],
+    "Akihabara": ["Bring your passport for tax-free shopping", "Check out Super Potato for retro gaming nostalgics"],
+    "Onodera": ["Stand-up sushi means fast-paced but incredible quality at a lower price", "Order seasonal items (Ask: 'Osusume wa nan desu ka?')"],
+    "teamLab": ["Wear pants that can be rolled up to your knees", "Avoid wearing skirts (mirrored floors)", "Download the teamLab app to interact with some exhibits"],
+    "National Museum": ["See the Honkan (Japanese Gallery) if you only have one hour", "The museum shop is excellent for high-quality, unique souvenirs"],
+    "Tsukiji": ["Go early (before 9 AM) to avoid the worst crowds", "Try the 100-yen Tamagoyaki (rolled omelet)", "Cash is king here"],
+    "Imperial Palace": ["The East Gardens are free and offer a peaceful escape", "Check out the massive stone foundations of the old Edo castle"],
+    "Chidorigafuchi": ["Rent a rowboat for the ultimate romantic view", "Expect massive crowds during peak bloom"],
+    "Shibuya Sky": ["No loose items allowed on the roof (lockers provided)", "The escalator ride up is part of the experience, have camera ready"],
+    "Ushigoro": ["Don't overcook A5 Wagyu! 3-5 seconds per side is enough", "Order the raw beef with egg yolk if you're adventurous"],
+    "Meiji Jingu": ["Bow once before entering the Torii gates", "Wash your hands at the Chozuya before approaching the main shrine"],
+    "Gotokuji": ["You can buy a cat statue, make a wish, and leave it, or take it home", "Please be quiet in the residential neighborhood nearby"],
+    "Godzilla": ["Head to the 8th-floor terrace of Hotel Gracery for an up-close view", "The Godzilla roars on the hour (from 12:00 to 20:00)"],
+    "Shinjuku Gyoen": ["Alcohol is strictly prohibited inside this park", "Requires a small entrance fee (around 500 yen)"],
+    "Gov. Building": ["The South Observatory is open during the day, North is open at night", "Look for Mt. Fuji on clear days in the morning"],
+    "Golden Gai": ["Many bars have a cover charge (table charge)", "Look for 'English Menu' or 'Tourists Welcome' signs if unsure"],
+    "Omoide": ["Also known as Piss Alley!", "Great for cheap Yakitori skewers and a beer in a cramped, authentic setting"],
+    "Tokyo Station": ["Stock up on Ekiben (station bentos) before boarding", "Locate your car number on the platform floor markings"],
+    "Fushimi Inari": ["Hike up further past the halfway point to escape 90% of the crowds", "Stop for some Inari Sushi or Kitsune Udon at the base"],
+    "Pontocho": ["Keep an eye out for Geiko and Maiko scurrying between appointments", "Many restaurants facing the river have outdoor terraces (Kawayuka)"],
+    "Bamboo": ["Arrive before 8 AM for photos without crowds", "Combine with the nearby Tenryu-ji Temple"],
+    "Tenryu-ji": ["The garden is famous for its 'borrowed scenery' of the Arashiyama mountains", "Take your shoes off and enjoy the view from the main hall"],
+    "Otagi": ["Try to find a statue that looks like you (there are 1,200 unique ones!)", "A peaceful alternative to the crowded bamboo grove"],
+    "Kinkaku-ji": ["Afternoons offer the best sunlight shining on the gold leaf", "Follow the set path, strict one-way system"],
+    "Giro Giro": ["Modern, affordable Kaiseki. Bookings essential", "Sit at the counter to watch the chefs work"],
+    "Keage": ["Walk right in the middle of the tracks for the best perspective", "Visit early morning if you want photos without crowds"],
+    "Nanzen-ji": ["Climb to the top of the Sanmon gate for a great view", "The brick aqueduct is a very rare and photogenic sight in Kyoto"],
+    "Philosopher's": ["Start from Ginkaku-ji and walk down to Nanzen-ji", "Stop by a local cafe along the canal for matcha"],
+    "Hokan-ji": ["Go early (around 5:30am) to capture the Yasaka Pagoda fully empty for photos.", "Sannen-zaka and Ninen-zaka are right next to it, also great for early morning shots."],
+    "Kiyomizu-dera": ["Drink from the Otowa Waterfall for longevity, success, or love (choose only one!)", "The sunset view from the observation deck is spectacular"],
+    "Miyako Odori": ["No photos allowed during the performance", "The theater is a beautiful example of early Showa architecture"],
+    "Nijo Castle": ["Listen to the 'Nightingale floors' that squeak to warn of ninjas", "The gardens are spectacularly illuminated during spring"],
+    "Nara": ["Keep any paper or maps hidden, the deer will eat them!", "Bow to the deer and they will bow back before you give them a cracker"],
+    "Todai-ji": ["Try to squeeze through the 'Buddha's Nostril' pillar for enlightenment", "The scale of the bronze Buddha is hard to capture on camera"],
+    "Byodo-in": ["Check your 10-yen coin—this is the temple pictured on it!", "Uji is famous for the best Matcha in Japan"],
+    "Uji": ["Try the Matcha Gyoza or ice cream nearby", "Byodo-in's museum is partially underground and very modern"],
+    "Nishiki": ["Try the 'Tako Tamago' (baby octopus with quail egg)", "Great place to buy high-quality Japanese kitchen knives"],
+    "Umeda": ["The escalator going across the void is a photo highlight", "Visit just before sunset to see both day and night views"],
+    "Shinsekai": ["Don't double-dip your Kushikatsu in the communal sauce!", "Try the mixed juice, a retro Osaka specialty"],
+    "Glico": ["Take the classic pose photo on the Ebisu Bridge", "Eat Takoyaki and Okonomiyaki here"],
+    "Checkout": ["Ensure you have not left anything in the safe or under the bed", "Leave room keys at the front desk"],
+    "Namba Station": ["The Rapi:t train looks like a retro-futuristic blue spaceship", "Reserve seats in advance if traveling during rush hour"],
+    "KIX": ["Stock up on Tokyo Banana and Royce Chocolate here", "Security can be slow, arrive at least 2.5 hours early"],
+    "Airport": ["Ensure your liquids are packed correctly", "Have your boarding pass and passport easily accessible"]
+  };
+
+  const match = Object.keys(recs).find(key => activity.toLowerCase().includes(key.toLowerCase()));
+  if (match) return recs[match];
+
+  return ["Stay hydrated and wear comfortable walking shoes!", "Look around for small, hidden details and take plenty of photos.", "Check Google Maps for last-minute route changes."];
+};
+
+const getEventTypeBanner = (type, activity) => {
+  const FALLBACK_ID = "1526481280693-3bfa7568e0f3"; // Mt Fuji Verified
+  const CAT_DEFAULTS = {
+    food: "1697652974652-a2336106043b", // Ramen Verified
+    transport: "1534274920174-3ad0b7ff2925", // Shinkansen Verified
+    hotel: "1582719478250-c89cae4dc85b",
+    sight: "1676829940012-4d61ecd20e57", // Kinkaku-ji Verified
+    walk: "1524413840807-0c3cb6fa808d",
+    default: "1526481280693-3bfa7568e0f3"
+  };
+
+  const getUrl = (id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&q=80&w=1000`;
+
+  if (!activity) return getUrl(CAT_DEFAULTS[type] || CAT_DEFAULTS.default);
+
+  const actLower = activity.toLowerCase();
+
+  // Verified Iconic IDs (Numerical)
+  if (actLower.includes('haneda') || actLower.includes('airport')) return getUrl("1674725690428-948af1d7f5a1");
+  if (actLower.includes('teamlab')) return getUrl("1593071376160-9881e78495ea");
+  if (actLower.includes('shibuya sky')) return getUrl("1729707397413-d4b10d6a0376");
+  if (actLower.includes('shibuya') || actLower.includes('scramble')) return getUrl("1706631093613-be82889d8a63");
+  if (actLower.includes('senso-ji') || actLower.includes('asakusa')) return getUrl("1706813253696-10ee6332edd3");
+  if (actLower.includes('fushimi') || actLower.includes('inari')) return getUrl("1558862108-daa1be6fda90");
+  if (actLower.includes('bamboo') || actLower.includes('arashiyama')) return getUrl("1632923754832-60642c12a7ed");
+  if (actLower.includes('kinkaku-ji') || actLower.includes('golden pavilion')) return getUrl("1676829940012-4d61ecd20e57");
+  if (actLower.includes('kiyomizu-dera') || actLower.includes('hokan-ji') || actLower.includes('yasaka')) return getUrl("1636089041212-21316c2fba75");
+  if (actLower.includes('nara') || (actLower.includes('deer') && !actLower.includes('giro'))) return getUrl("1592841451220-553d1a8f306f");
+  if (actLower.includes('osaka castle')) return getUrl("1704003671784-ca0a7c7cb4aa");
+  if (actLower.includes('dotonbori') || actLower.includes('glico')) return getUrl("1636589950353-041d4fba544c");
+  if (actLower.includes('akihabara')) return getUrl("1544974918420-a61f5c71a858");
+  if (actLower.includes('ueno')) return getUrl("1553078197116-ae4fd84cbbe8");
+  if (actLower.includes('imperial palace')) return getUrl("1758496519274-8172931b2773");
+  if (actLower.includes('chidorigafuchi') || actLower.includes('moat')) return getUrl("1760708392291-e1658031ee66");
+  if (actLower.includes('gotokuji')) return getUrl("1723708889726-08a3921cc0e6");
+  if (actLower.includes('nijo')) return getUrl("1668551776853-0b81db47e2cf");
+  if (actLower.includes('uji') || actLower.includes('byodo-in')) return getUrl("1752552750561-422ba1237170");
+  if (actLower.includes('meiji jingu')) return getUrl("1720783199805-bf399ed5173c");
+  if (actLower.includes('shinjuku gyoen')) return getUrl("1660519083174-d39af2133902");
+  if (actLower.includes('godzilla')) return getUrl("1748740345094-7b8d8128e147");
+  if (actLower.includes('3d cat') || actLower.includes('shinjuku vision')) return getUrl("1737670060060-5b7d702cced9");
+  if (actLower.includes('gov. building') || actLower.includes('metropolitan')) return getUrl("1705699147926-05813429312a");
+  if (actLower.includes('nakamise')) return getUrl("1769321308975-4c069a352677");
+  if (actLower.includes('fire ramen')) return getUrl("1697652974652-a2336106043b");
+  if (actLower.includes('mochi')) return getUrl("1528699633336-3b0439f17d5c");
+  if (actLower.includes('philosopher')) return getUrl("1542931287-023b922fa89b");
+  if (actLower.includes('nishiki')) return getUrl("1701001909948-8048598fbc92");
+  if (actLower.includes('depachika')) return getUrl("1709515522019-4794fd3568eb");
+  if (actLower.includes('sky building') || actLower.includes('umeda')) return getUrl("1678730184758-7a54022449ee");
+  if (actLower.includes('hiroshima') || actLower.includes('peace memorial')) return getUrl("1658167865945-7e9949fa4d69");
+  if (actLower.includes('miyajima')) return getUrl("1623614864429-8fa811a8d854");
+  if (actLower.includes('gion') || actLower.includes('pontocho') || actLower.includes('geiko')) return getUrl("1534515033467-dd4df1704496");
+  if (actLower.includes('himeji')) return getUrl("1525636127473-251821bc56ab");
+  if (actLower.includes('monkey') || actLower.includes('snow monkey')) return getUrl("1550713898958-3570906a58c4");
+  if (actLower.includes('sushi')) return getUrl("1639019595653-e7395f071c00");
+  if (actLower.includes('yomoide') || actLower.includes('yokocho') || actLower.includes('golden gai')) return getUrl("1715905732164-0acc9dab00d4");
+  if (actLower.includes('tsukiji')) return getUrl("1553621042-f6e147245754");
+  if (actLower.includes('museum')) return getUrl("1723013082670-2ea6bd4f7ffa");
+  if (actLower.includes('nanzen-ji')) return getUrl("1668551776853-0b81db47e2cf");
+  if (actLower.includes('shinkansen')) return getUrl("1534274920174-3ad0b7ff2925");
+  if (actLower.includes('ginza') || actLower.includes('chuo-dori')) return getUrl("1714332257298-b8bff34dbac7");
+  if (actLower.includes('ramen')) return getUrl("1697652974652-a2336106043b");
+
+  return getUrl(CAT_DEFAULTS[type] || CAT_DEFAULTS.default);
 };
 
 const App = () => {
@@ -449,139 +583,6 @@ const App = () => {
     setIsPreGenerating(false);
   };
 
-  const getEventTypeBanner = (type, activity) => {
-    const FALLBACK_ID = "1526481280693-3bfa7568e0f3"; // Mt Fuji Verified
-    const CAT_DEFAULTS = {
-      food: "1697652974652-a2336106043b", // Ramen Verified
-      transport: "1534274920174-3ad0b7ff2925", // Shinkansen Verified
-      hotel: "1582719478250-c89cae4dc85b",
-      sight: "1676829940012-4d61ecd20e57", // Kinkaku-ji Verified
-      walk: "1524413840807-0c3cb6fa808d",
-      default: "1526481280693-3bfa7568e0f3"
-    };
-
-    const getUrl = (id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&q=80&w=1000`;
-
-    if (!activity) return getUrl(CAT_DEFAULTS[type] || CAT_DEFAULTS.default);
-
-    const actLower = activity.toLowerCase();
-
-    // Verified Iconic IDs (Numerical)
-    if (actLower.includes('haneda') || actLower.includes('airport')) return getUrl("1674725690428-948af1d7f5a1");
-    if (actLower.includes('teamlab')) return getUrl("1593071376160-9881e78495ea");
-    if (actLower.includes('shibuya sky')) return getUrl("1729707397413-d4b10d6a0376");
-    if (actLower.includes('shibuya') || actLower.includes('scramble')) return getUrl("1706631093613-be82889d8a63");
-    if (actLower.includes('senso-ji') || actLower.includes('asakusa')) return getUrl("1706813253696-10ee6332edd3");
-    if (actLower.includes('fushimi') || actLower.includes('inari')) return getUrl("1558862108-daa1be6fda90");
-    if (actLower.includes('bamboo') || actLower.includes('arashiyama')) return getUrl("1632923754832-60642c12a7ed");
-    if (actLower.includes('kinkaku-ji') || actLower.includes('golden pavilion')) return getUrl("1676829940012-4d61ecd20e57");
-    if (actLower.includes('kiyomizu-dera') || actLower.includes('hokan-ji') || actLower.includes('yasaka')) return getUrl("1636089041212-21316c2fba75");
-    if (actLower.includes('nara') || (actLower.includes('deer') && !actLower.includes('giro'))) return getUrl("1592841451220-553d1a8f306f");
-    if (actLower.includes('osaka castle')) return getUrl("1704003671784-ca0a7c7cb4aa");
-    if (actLower.includes('dotonbori') || actLower.includes('glico')) return getUrl("1636589950353-041d4fba544c");
-    if (actLower.includes('akihabara')) return getUrl("1544974918420-a61f5c71a858");
-    if (actLower.includes('ueno')) return getUrl("1553078197116-ae4fd84cbbe8");
-    if (actLower.includes('imperial palace')) return getUrl("1758496519274-8172931b2773");
-    if (actLower.includes('chidorigafuchi') || actLower.includes('moat')) return getUrl("1760708392291-e1658031ee66");
-    if (actLower.includes('gotokuji')) return getUrl("1723708889726-08a3921cc0e6");
-    if (actLower.includes('nijo')) return getUrl("1668551776853-0b81db47e2cf");
-    if (actLower.includes('uji') || actLower.includes('byodo-in')) return getUrl("1752552750561-422ba1237170");
-    if (actLower.includes('meiji jingu')) return getUrl("1720783199805-bf399ed5173c");
-    if (actLower.includes('shinjuku gyoen')) return getUrl("1660519083174-d39af2133902");
-    if (actLower.includes('godzilla')) return getUrl("1748740345094-7b8d8128e147");
-    if (actLower.includes('3d cat') || actLower.includes('shinjuku vision')) return getUrl("1737670060060-5b7d702cced9");
-    if (actLower.includes('gov. building') || actLower.includes('metropolitan')) return getUrl("1705699147926-05813429312a");
-    if (actLower.includes('nakamise')) return getUrl("1769321308975-4c069a352677");
-    if (actLower.includes('fire ramen')) return getUrl("1697652974652-a2336106043b");
-    if (actLower.includes('mochi')) return getUrl("1528699633336-3b0439f17d5c");
-    if (actLower.includes('philosopher')) return getUrl("1542931287-023b922fa89b");
-    if (actLower.includes('nishiki')) return getUrl("1701001909948-8048598fbc92");
-    if (actLower.includes('depachika')) return getUrl("1709515522019-4794fd3568eb");
-    if (actLower.includes('sky building') || actLower.includes('umeda')) return getUrl("1678730184758-7a54022449ee");
-    if (actLower.includes('hiroshima') || actLower.includes('peace memorial')) return getUrl("1658167865945-7e9949fa4d69");
-    if (actLower.includes('miyajima')) return getUrl("1623614864429-8fa811a8d854");
-    if (actLower.includes('gion') || actLower.includes('pontocho') || actLower.includes('geiko')) return getUrl("1534515033467-dd4df1704496");
-    if (actLower.includes('himeji')) return getUrl("1525636127473-251821bc56ab");
-    if (actLower.includes('monkey') || actLower.includes('snow monkey')) return getUrl("1550713898958-3570906a58c4");
-    if (actLower.includes('sushi')) return getUrl("1639019595653-e7395f071c00");
-    if (actLower.includes('yomoide') || actLower.includes('yokocho') || actLower.includes('golden gai')) return getUrl("1715905732164-0acc9dab00d4");
-    if (actLower.includes('tsukiji')) return getUrl("1553621042-f6e147245754");
-    if (actLower.includes('museum')) return getUrl("1723013082670-2ea6bd4f7ffa");
-    if (actLower.includes('nanzen-ji')) return getUrl("1668551776853-0b81db47e2cf");
-    if (actLower.includes('shinkansen')) return getUrl("1534274920174-3ad0b7ff2925");
-    if (actLower.includes('ginza') || actLower.includes('chuo-dori')) return getUrl("1714332257298-b8bff34dbac7");
-    if (actLower.includes('ramen')) return getUrl("1697652974652-a2336106043b");
-
-    return getUrl(CAT_DEFAULTS[type] || CAT_DEFAULTS.default);
-  };
-
-  const getActivityRecommendations = (activity) => {
-    if (!activity) return [];
-
-    const recs = {
-      "Haneda": ["Have your Visit Japan Web QR code ready on screen", "Pick up a Welcome Suica or Pasmo Passport at the station", "Use airport baggage delivery (Kuroneko Yamato) if you have large suitcases"],
-      "Shintomicho": ["Check if they provide pajamas (many Japanese hotels do)", "Familiarize yourself with the nearest subway exits"],
-      "Ramen Street": ["Expect a 20-30 min queue for Rokurinsha", "Buy your ticket from the vending machine first"],
-      "Ginza": ["Visit Uniqlo's global flagship store", "Itoya stationery store is a must-visit nearby"],
-      "Senso-ji": ["Buy an Omikuji (paper fortune) for 100 yen", "If you get a bad fortune, tie it to the racks to leave the bad luck behind", "Experience the incense smoke at the main cauldron for good health"],
-      "Nakamise": ["Don't walk and eat! Eat at the stall where you bought the food", "Try the Ningyoyaki (sweet bean cakes) and fresh Agemanju"],
-      "Asakusa Pier": ["Sit on the right side for better views of Skytree", "Get tickets in advance online if possible"],
-      "Hama-rikyu": ["Enjoy matcha set at the Nakajima-no-ochaya tea house", "Notice the tide-water pond which changes level with Tokyo Bay"],
-      "Manten Sushi": ["Trust the chef (Omakase style)", "No need for extra soy sauce, pieces are pre-seasoned"],
-      "Monjayaki": ["Let the staff cook it for you if it's your first time", "Use the tiny spatulas to scrape and eat directly from the grill"],
-      "Ueno Park": ["Bring a leisure sheet (picnic mat) to sit on", "Grab some bentos and drinks from a nearby conbini beforehand"],
-      "Ameyoko": ["Bargaining is possible here (rare for Japan!)", "Try the fresh fruit skewers and Takoyaki"],
-      "Akihabara": ["Bring your passport for tax-free shopping", "Check out Super Potato for retro gaming nostalgics"],
-      "Onodera": ["Stand-up sushi means fast-paced but incredible quality at a lower price", "Order seasonal items (Ask: 'Osusume wa nan desu ka?')"],
-      "teamLab": ["Wear pants that can be rolled up to your knees", "Avoid wearing skirts (mirrored floors)", "Download the teamLab app to interact with some exhibits"],
-      "National Museum": ["See the Honkan (Japanese Gallery) if you only have one hour", "The museum shop is excellent for high-quality, unique souvenirs"],
-      "Tsukiji": ["Go early (before 9 AM) to avoid the worst crowds", "Try the 100-yen Tamagoyaki (rolled omelet)", "Cash is king here"],
-      "Imperial Palace": ["The East Gardens are free and offer a peaceful escape", "Check out the massive stone foundations of the old Edo castle"],
-      "Chidorigafuchi": ["Rent a rowboat for the ultimate romantic view", "Expect massive crowds during peak bloom"],
-      "Shibuya Sky": ["No loose items allowed on the roof (lockers provided)", "The escalator ride up is part of the experience, have camera ready"],
-      "Ushigoro": ["Don't overcook A5 Wagyu! 3-5 seconds per side is enough", "Order the raw beef with egg yolk if you're adventurous"],
-      "Meiji Jingu": ["Bow once before entering the Torii gates", "Wash your hands at the Chozuya before approaching the main shrine"],
-      "Gotokuji": ["You can buy a cat statue, make a wish, and leave it, or take it home", "Please be quiet in the residential neighborhood nearby"],
-      "Godzilla": ["Head to the 8th-floor terrace of Hotel Gracery for an up-close view", "The Godzilla roars on the hour (from 12:00 to 20:00)"],
-      "Shinjuku Gyoen": ["Alcohol is strictly prohibited inside this park", "Requires a small entrance fee (around 500 yen)"],
-      "Gov. Building": ["The South Observatory is open during the day, North is open at night", "Look for Mt. Fuji on clear days in the morning"],
-      "Golden Gai": ["Many bars have a cover charge (table charge)", "Look for 'English Menu' or 'Tourists Welcome' signs if unsure"],
-      "Omoide": ["Also known as Piss Alley!", "Great for cheap Yakitori skewers and a beer in a cramped, authentic setting"],
-      "Tokyo Station": ["Stock up on Ekiben (station bentos) before boarding", "Locate your car number on the platform floor markings"],
-      "Fushimi Inari": ["Hike up further past the halfway point to escape 90% of the crowds", "Stop for some Inari Sushi or Kitsune Udon at the base"],
-      "Pontocho": ["Keep an eye out for Geiko and Maiko scurrying between appointments", "Many restaurants facing the river have outdoor terraces (Kawayuka)"],
-      "Bamboo": ["Arrive before 8 AM for photos without crowds", "Combine with the nearby Tenryu-ji Temple"],
-      "Tenryu-ji": ["The garden is famous for its 'borrowed scenery' of the Arashiyama mountains", "Take your shoes off and enjoy the view from the main hall"],
-      "Otagi": ["Try to find a statue that looks like you (there are 1,200 unique ones!)", "A peaceful alternative to the crowded bamboo grove"],
-      "Kinkaku-ji": ["Afternoons offer the best sunlight shining on the gold leaf", "Follow the set path, strict one-way system"],
-      "Giro Giro": ["Modern, affordable Kaiseki. Bookings essential", "Sit at the counter to watch the chefs work"],
-      "Keage": ["Walk right in the middle of the tracks for the best perspective", "Visit early morning if you want photos without crowds"],
-      "Nanzen-ji": ["Climb to the top of the Sanmon gate for a great view", "The brick aqueduct is a very rare and photogenic sight in Kyoto"],
-      "Philosopher's": ["Start from Ginkaku-ji and walk down to Nanzen-ji", "Stop by a local cafe along the canal for matcha"],
-      "Hokan-ji": ["Go early (around 5:30am) to capture the Yasaka Pagoda fully empty for photos.", "Sannen-zaka and Ninen-zaka are right next to it, also great for early morning shots."],
-      "Kiyomizu-dera": ["Drink from the Otowa Waterfall for longevity, success, or love (choose only one!)", "The sunset view from the observation deck is spectacular"],
-      "Miyako Odori": ["No photos allowed during the performance", "The theater is a beautiful example of early Showa architecture"],
-      "Nijo Castle": ["Listen to the 'Nightingale floors' that squeak to warn of ninjas", "The gardens are spectacularly illuminated during spring"],
-      "Nara": ["Keep any paper or maps hidden, the deer will eat them!", "Bow to the deer and they will bow back before you give them a cracker"],
-      "Todai-ji": ["Try to squeeze through the 'Buddha's Nostril' pillar for enlightenment", "The scale of the bronze Buddha is hard to capture on camera"],
-      "Byodo-in": ["Check your 10-yen coin—this is the temple pictured on it!", "Uji is famous for the best Matcha in Japan"],
-      "Uji": ["Try the Matcha Gyoza or ice cream nearby", "Byodo-in's museum is partially underground and very modern"],
-      "Nishiki": ["Try the 'Tako Tamago' (baby octopus with quail egg)", "Great place to buy high-quality Japanese kitchen knives"],
-      "Umeda": ["The escalator going across the void is a photo highlight", "Visit just before sunset to see both day and night views"],
-      "Shinsekai": ["Don't double-dip your Kushikatsu in the communal sauce!", "Try the mixed juice, a retro Osaka specialty"],
-      "Glico": ["Take the classic pose photo on the Ebisu Bridge", "Eat Takoyaki and Okonomiyaki here"],
-      "Checkout": ["Ensure you have not left anything in the safe or under the bed", "Leave room keys at the front desk"],
-      "Namba Station": ["The Rapi:t train looks like a retro-futuristic blue spaceship", "Reserve seats in advance if traveling during rush hour"],
-      "KIX": ["Stock up on Tokyo Banana and Royce Chocolate here", "Security can be slow, arrive at least 2.5 hours early"],
-      "Airport": ["Ensure your liquids are packed correctly", "Have your boarding pass and passport easily accessible"]
-    };
-
-    const match = Object.keys(recs).find(key => activity.toLowerCase().includes(key.toLowerCase()));
-    if (match) return recs[match];
-
-    return ["Stay hydrated and wear comfortable walking shoes!", "Look around for small, hidden details and take plenty of photos.", "Check Google Maps for last-minute route changes."];
-  };
-
   const vocabData = [
     {
       category: "Basic Phrases",
@@ -604,7 +605,7 @@ const App = () => {
         { en: "What is the Wi-Fi password?", ro: "Wi-Fi no pasu waado wa nan desu ka?", jp: "Wi-Fiのパスワードは何ですか？" },
         { en: "To [place], please", ro: "[Place] made onegaishimasu", jp: "[Place] までお願いします" },
         { en: "I want to go to [place]", ro: "[Place] ni ikitai desu", jp: "[Place] に行きたいです" },
-        { en: "Does this bus go to [place]?", ro: "Kono basu wa [Place] ni ikisu ka?", jp: "このバスは [Place] に行きますか？" }
+        { en: "Does this bus go to [place]?", ro: "Kono basu wa [Place] ni ikimasu ka?", jp: "このバスは [Place] に行きますか？" }
       ]
     },
     {
@@ -731,7 +732,7 @@ const App = () => {
   {
     "title": "Part 1: Tokyo East (The Historic & Blooming Heart)",
     "subtitle": "Stay: 3 Nights.",
-    "dates": "",
+    "dates": "Mar 26 - Mar 28",
     "area": "Ginza, Nihonbashi, or Tokyo Station area.",
     "days": [
       {
@@ -826,7 +827,7 @@ const App = () => {
           },
           {
             "time": "15:30",
-            "activity": "Ginza Central & Depachika (Food Halls)",
+            "activity": "Ginza Central & Architecture",
             "type": "food",
             "transportMode": "taxi",
             "note": "Metro o Taxi desde Akihabara (aprox. 15 min). Cerca de Ginza para cenar. Paseo relajado. Arquitectura: Admiren las fachadas del emblem\u00e1tico edificio Wako con su torre de reloj.",
@@ -872,7 +873,7 @@ const App = () => {
           },
           {
             "time": "15:30",
-            "activity": "Ginza Central & Depachika (Food Halls)",
+            "activity": "Ginza Central & Depachika (Uniqlo Flagship)",
             "type": "food",
             "transportMode": "taxi",
             "note": "Metro o Taxi desde Akihabara (aprox. 15 min). Cerca de Ginza para cenar. Paseo relajado. Gastronom\u00eda (Cultura): Visiten el s\u00f3tano Depachika de un gran almac\u00e9n (como Ginza Mitsukoshi o Daimaru) para ver una incre\u00edble exhibici\u00f3n de reposter\u00eda japonesa, chocolates y exquisiteces gourmet. Es una experiencia cultural en s\u00ed misma y una excelente oportunidad para un tentempi\u00e9 ligero antes del sushi.",
@@ -901,7 +902,7 @@ const App = () => {
   {
     "title": "Part 2: Tokyo West (Neon Finale)",
     "subtitle": "Stay: 2 Nights.",
-    "dates": "",
+    "dates": "Mar 29 - Mar 30",
     "area": "Shinjuku or Shibuya.",
     "days": [
       {
@@ -1057,8 +1058,8 @@ const App = () => {
   {
     "title": "Part 3: Kyoto (The Cultural Heart)",
     "subtitle": "Stay: 4 Nights.",
-    "dates": "",
-    "area": "Sanjo or Kawaramachi (Central).",
+    "dates": "Mar 31 - Apr 3",
+    "area": "Sanjo / Kawaramachi (Kyoto) - Hotel Resol Kyoto Kawaramachi Sanjo",
     "days": [
       {
         "date": "Tue, Mar 31",
@@ -1329,8 +1330,8 @@ const App = () => {
   {
     "title": "Part 4: Osaka (The Kitchen of Japan)",
     "subtitle": "Stay: 1 Night.",
-    "dates": "",
-    "area": "",
+    "dates": "Apr 4 - Apr 5",
+    "area": "Namba / Dotonbori (Osaka)",
     "days": [
       {
         "date": "Sat, Apr 4",
@@ -1436,6 +1437,74 @@ const App = () => {
             "type": "transport",
             "transportMode": "public",
             "note": "Fly to Beijing, then connect to Madrid. Arrive in Madrid at 21:00 the same day.",
+            "status": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Part 5: Shopping & Bonus Add-ons",
+    "subtitle": "Flexible / Extra Ideas",
+    "dates": "Anytime",
+    "area": "Tokyo, Kyoto, Osaka",
+    "days": [
+      {
+        "date": "Bonus",
+        "label": "Shopping & Unique Experiences",
+        "events": [
+          {
+            "time": "Extra",
+            "activity": "Uniqlo/GU Ginza (Global Flagship)",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Description: 12 floors of Uniqlo and one of the largest GU stores in the world. High-quality basics and Japan-exclusive designs.",
+            "status": ""
+          },
+          {
+            "time": "Extra",
+            "activity": "Don Quijote (Donki)",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Description: Famous discount store for everything from snacks to electronics. The Akihabara or Shibuya (Mega Donki) locations are great.",
+            "status": ""
+          },
+          {
+            "time": "Extra",
+            "activity": "Stationery: Itoya or Loft",
+            "type": "sight",
+            "transportMode": "walk",
+            "note": "Description: Itoya in Ginza is a 12-story stationery wonderland. Loft is great for lifestyle goods and gifts.",
+            "status": ""
+          },
+          {
+            "time": "Extra",
+            "activity": "Character Street (Tokyo Station)",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Description: A basement street dedicated to anime/character shops (Pokemon, Ghibli, Sanrio, etc.) inside Tokyo Station.",
+            "status": ""
+          }
+        ]
+      },
+      {
+        "date": "Tips",
+        "label": "Practical Travel Tips",
+        "events": [
+          {
+            "time": "Info",
+            "activity": "Cash & IC Cards",
+            "type": "sight",
+            "transportMode": "public",
+            "note": "Tip: Load your iPhone Wallet with Suica/Pasmo. Cash is still needed for some temples and small shops.",
+            "status": ""
+          },
+          {
+            "time": "Info",
+            "activity": "Luggage Forwarding (Takkyubin)",
+            "type": "transport",
+            "transportMode": "taxi",
+            "note": "Tip: Use your hotel front desk to send large bags to the next hotel (approx. \u00a52,000 per bag). It saves you from hauling them on trains.",
             "status": ""
           }
         ]
@@ -1627,6 +1696,27 @@ const App = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Google Doc Link */}
+                <div className="mt-6">
+                  <a 
+                    href="https://docs.google.com/document/d/18tBATiJ796mLbsPoKMmLdSbqhhyCwdGWhXBZxXRQ9No"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-5 bg-white border border-[var(--color-border-light)] rounded-[2rem] hover:border-[var(--color-accent-pink)]/30 transition-all group shadow-sm active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500 group-hover:bg-blue-100 transition-colors">
+                        <FileText size={20} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[var(--color-sumi-black)] text-sm italic">Full Itinerary GDoc</h4>
+                        <p className="text-[10px] text-neutral-400 font-medium not-italic">Open reference document</p>
+                      </div>
+                    </div>
+                    <ExternalLink size={16} className="text-neutral-300 group-hover:text-[var(--color-accent-pink)] transition-colors" />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -1708,6 +1798,11 @@ const App = () => {
                           <span className="text-[10px] font-bold uppercase text-[var(--color-accent-pink)] bg-[var(--color-accent-pink-soft)] px-2 py-0.5 rounded-full tracking-wider">Part {res.partIdx + 1}</span>
                           <span className="text-xs text-neutral-500 font-medium">{res.day.date} • {res.event.time}</span>
                         </div>
+                        <p className="text-[11px] text-neutral-400 mt-2 line-clamp-2 italic leading-relaxed">
+                          {res.event.note.toLowerCase().includes(searchQuery.toLowerCase()) 
+                            ? `...${res.event.note.substring(Math.max(0, res.event.note.toLowerCase().indexOf(searchQuery.toLowerCase()) - 20), res.event.note.toLowerCase().indexOf(searchQuery.toLowerCase()) + 60)}...`
+                            : res.event.note.substring(0, 80) + '...'}
+                        </p>
                       </div>
                     </div>
                   ));
@@ -1884,6 +1979,24 @@ const App = () => {
                                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                   <NoteRenderer note={event.note} />
 
+                                  {/* Activity Recommendations */}
+                                  {getActivityRecommendations(event.activity).length > 0 && (
+                                    <div className="mt-2 p-4 bg-amber-50/50 rounded-2xl border border-amber-100/30">
+                                      <h5 className="text-[10px] font-bold uppercase text-amber-600 tracking-wider mb-2 flex items-center gap-1.5 opacity-80">
+                                        <span className="w-1 h-1 rounded-full bg-amber-500"></span>
+                                        Travel Tips
+                                      </h5>
+                                      <ul className="space-y-1.5">
+                                        {getActivityRecommendations(event.activity).map((rec, i) => (
+                                          <li key={i} className="text-[11px] text-amber-900/70 flex gap-2 leading-relaxed font-medium">
+                                            <span className="shrink-0 mt-1 opacity-40 text-[8px]">•</span>
+                                            {rec}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+
                                   <AudioGuide
                                     placeName={event.activity}
                                     dayContext={day.label}
@@ -1908,7 +2021,7 @@ const App = () => {
         </div>
       </main >
 
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-[200]">
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[200]">
         <div className="bg-[var(--color-sumi-black)]/90 backdrop-blur-xl text-white rounded-[2rem] p-1.5 flex items-center justify-between shadow-2xl shadow-black/40 border border-white/10 transition-all duration-300">
           <div className="flex items-center space-x-1 p-1">
             {itineraryData.map((_, idx) => (
@@ -1923,7 +2036,7 @@ const App = () => {
                   : 'text-white/40 hover:text-white hover:bg-white/10'
                   }`}
               >
-                P{idx + 1}
+                {idx === itineraryData.length - 1 ? "+" : `P${idx + 1}`}
               </button>
             ))}
           </div>

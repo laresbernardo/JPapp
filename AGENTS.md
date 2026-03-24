@@ -59,12 +59,16 @@ The React app has:
 ## Sync Procedure (Reference)
 This is the complete procedure for syncing the itinerary with Google Docs:
 
-1. Fetch the Google Doc as text export
-2. Parse the itinerary sections (Parts 1-4)
-3. Extract daily events with time, activity, type, transportMode, note
-4. Compare with current `itineraryData` in `src/App.jsx`
-5. Update the app data to match the Google Doc
-6. Run `npm run lint` and `npm run build` to verify
-7. Report all changes made
+6. Update the app data to match the Google Doc
+7. Format notes following the **Notes Formatting Rules** below
+8. Run `npm run lint` and `npm run build` to verify
+9. Report all changes made
+
+## Notes Formatting Rules
+To ensure notes look "nice" (bulleted list with bolded prefixes), follow these rules when updating `itineraryData`:
+1. Use the format `Label: Content` within the `note` string.
+2. Supported labels include: `Welcome`, `Pass`, `Transport`, `Travel`, `Highlight`, `Tip`, `Action`, `Strategy`, `Logistics`, `Eat`, `Vibe`, `Where`, `Why`, `Activity`, `Experience`, `Architecture`, `Admission`, `Recommendation`, `Task`, `Hotel`, `Info`, `Venue`.
+3. Separate different points with a space or newline (the `NoteRenderer` handles the splitting based on the `Label:` pattern).
+4. You can use standard bolding `**text**` inside the content if needed (requires NoteRenderer support).
 
 The Google Doc ID is: `18tBATiJ796mLbsPoKMmLdSbqhhyCwdGWhXBZxXRQ9No`

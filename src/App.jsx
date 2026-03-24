@@ -315,7 +315,7 @@ const NoteRenderer = ({ note }) => {
 
   // Common labels used in the itinerary
   const labels = [
-    "Travel", "Highlight", "Tip", "Action", "Strategy", "Logistics",
+    "Welcome", "Pass", "Transport", "Travel", "Highlight", "Tip", "Action", "Strategy", "Logistics",
     "Done", "Eat", "Vibe", "GMaps", "Where", "Why", "Activity",
     "Experience", "Structure", "Architecture", "Admission",
     "Recommendation", "Task", "Hotel", "Ryokan", "Checkout",
@@ -744,7 +744,7 @@ const App = () => {
             "activity": "Touchdown at Haneda (HND)",
             "type": "sight",
             "transportMode": "public",
-            "note": "Welcome! You land at Terminal 3. Clear immigration (approx. 1 hour). Transport: Take the Keikyu Line or Tokyo Monorail, depending on your specific hotel location in Ginza/Nihonbashi. It takes about 35\u201345 minutes.",
+            "note": "Welcome: You land at Terminal 3. Clear immigration (approx. 1 hour). Pass: Buy the 72-Hour Tokyo Subway Pass at the Information Center. Activate it tomorrow morning for optimal use. Transport: Take the Keikyu Line or Tokyo Monorail, depending on your specific hotel location in Ginza/Nihonbashi. It takes about 35\u201345 minutes.",
             "status": "pending"
           },
           {
@@ -827,7 +827,7 @@ const App = () => {
           },
           {
             "time": "15:30",
-            "activity": "Ginza Central & Architecture",
+            "activity": "Ginza Central & Depachika (Food Halls)",
             "type": "food",
             "transportMode": "taxi",
             "note": "Metro o Taxi desde Akihabara (aprox. 15 min). Cerca de Ginza para cenar. Paseo relajado. Arquitectura: Admiren las fachadas del emblem\u00e1tico edificio Wako con su torre de reloj.",
@@ -873,7 +873,7 @@ const App = () => {
           },
           {
             "time": "15:30",
-            "activity": "Ginza Central & Depachika (Uniqlo Flagship)",
+            "activity": "Ginza Central & Depachika (Food Halls)",
             "type": "food",
             "transportMode": "taxi",
             "note": "Metro o Taxi desde Akihabara (aprox. 15 min). Cerca de Ginza para cenar. Paseo relajado. Gastronom\u00eda (Cultura): Visiten el s\u00f3tano Depachika de un gran almac\u00e9n (como Ginza Mitsukoshi o Daimaru) para ver una incre\u00edble exhibici\u00f3n de reposter\u00eda japonesa, chocolates y exquisiteces gourmet. Es una experiencia cultural en s\u00ed misma y una excelente oportunidad para un tentempi\u00e9 ligero antes del sushi.",
@@ -1562,7 +1562,7 @@ const App = () => {
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-[var(--color-accent-pink)] rounded-full flex items-center justify-center text-white text-xl shadow-inner">🌸</div>
           <div>
-            <h1 className="text-base font-bold leading-none mb-1 text-[var(--color-sumi-black)] uppercase tracking-tight">Ber & Maru</h1>
+            <h1 className="text-base font-bold leading-tight mb-1 text-[var(--color-sumi-black)] uppercase tracking-tight">Ber & Maru</h1>
             <p className="text-[10px] font-semibold text-[var(--color-sumi-gray)] uppercase tracking-[0.2em]">Japan 2026</p>
           </div>
         </div>
@@ -1827,7 +1827,7 @@ const App = () => {
               <span className="px-3 py-1 bg-[var(--color-accent-pink-soft)] text-[var(--color-accent-pink)] text-[10px] font-bold rounded-full uppercase tracking-[0.2em] mb-4">
                 {itineraryData[activePart].dates}
               </span>
-              <h2 className="text-4xl font-bold text-[var(--color-sumi-black)] leading-[1.1] mb-2">
+              <h2 className="text-4xl font-bold text-[var(--color-sumi-black)] leading-tight mb-2">
                 {itineraryData[activePart].title}
               </h2>
               <p className="text-lg text-[var(--color-sumi-gray)] font-medium italic opacity-80">
@@ -1853,7 +1853,7 @@ const App = () => {
                 <div>
                   <h3 className="text-[10px] font-bold uppercase text-neutral-400 tracking-[0.25em] mb-0.5 leading-none font-inter">{day.date}</h3>
                   <div className="flex items-center gap-3">
-                    <h4 className="text-2xl font-bold text-[var(--color-sumi-black)] leading-none font-instrument">{day.label}</h4>
+                    <h4 className="text-2xl font-bold text-[var(--color-sumi-black)] leading-tight font-instrument">{day.label}</h4>
                     {(() => {
                       const weatherKey = getWeatherKey(itineraryData[activePart].area);
                       const cityWeather = weather[weatherKey];
@@ -1861,14 +1861,21 @@ const App = () => {
 
                       // Try to find specific day forecast
                       const dayForecast = (() => {
-                        if (!cityWeather.daily) return null;
-                        const dayDate = new Date(day.date + ", 2026").toISOString().split('T')[0];
-                        const dateIdx = cityWeather.daily.time.indexOf(dayDate);
-                        if (dateIdx === -1) return null;
-                        return {
-                          max: cityWeather.daily.temperature_2m_max[dateIdx],
-                          min: cityWeather.daily.temperature_2m_min[dateIdx]
-                        };
+                        if (!cityWeather.daily || !day.date.includes(',')) return null;
+                        try {
+                          const parsedDate = new Date(day.date + ", 2026");
+                          if (isNaN(parsedDate.getTime())) return null;
+                          const dayDate = parsedDate.toISOString().split('T')[0];
+                          const dateIdx = cityWeather.daily.time.indexOf(dayDate);
+                          if (dateIdx === -1) return null;
+                          return {
+                            max: cityWeather.daily.temperature_2m_max[dateIdx],
+                            min: cityWeather.daily.temperature_2m_min[dateIdx]
+                          };
+                        } catch (e) {
+                          console.error("Date parsing error:", e);
+                          return null;
+                        }
                       })();
 
                       return (
@@ -2022,8 +2029,8 @@ const App = () => {
       </main >
 
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-[200]">
-        <div className="bg-[var(--color-sumi-black)]/90 backdrop-blur-xl text-white rounded-[2rem] p-1.5 flex items-center justify-between shadow-2xl shadow-black/40 border border-white/10 transition-all duration-300">
-          <div className="flex items-center space-x-1 p-1">
+        <div className="bg-[var(--color-sumi-black)]/90 backdrop-blur-xl text-white rounded-[2rem] p-1 sm:p-1.5 flex items-center justify-between shadow-2xl shadow-black/40 border border-white/10 transition-all duration-300">
+          <div className="flex items-center space-x-0.5 sm:space-x-1 p-0.5 sm:p-1">
             {itineraryData.map((_, idx) => (
               <button
                 key={idx}
@@ -2031,7 +2038,7 @@ const App = () => {
                   setActivePart(idx);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-xs transition-all duration-500 ${activePart === idx
+                className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-[10px] sm:text-xs transition-all duration-500 ${activePart === idx
                   ? 'bg-white text-[var(--color-sumi-black)] shadow-lg scale-105'
                   : 'text-white/40 hover:text-white hover:bg-white/10'
                   }`}
@@ -2041,19 +2048,19 @@ const App = () => {
             ))}
           </div>
           <div className="h-6 w-px bg-white/10 mx-1 sm:mx-2"></div>
-          <div className="flex flex-col items-end pr-3 sm:pr-6 select-none shrink-0">
+          <div className="flex flex-col items-end pr-2 sm:pr-6 select-none shrink-0">
             <span className="text-[7px] font-bold text-white/30 uppercase tracking-[0.2em] mb-1 leading-none hidden sm:block">Converter</span>
-            <div className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-lg border border-white/10 group focus-within:border-[var(--color-accent-pink)] transition-colors">
-              <span className="text-[10px] font-bold text-white/50">¥</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-white/5 px-1.5 sm:px-2 py-1 rounded-lg border border-white/10 group focus-within:border-[var(--color-accent-pink)] transition-colors">
+              <span className="text-[9px] sm:text-[10px] font-bold text-white/50">¥</span>
               <input
                 type="text"
                 inputMode="numeric"
                 value={jpyAmount}
                 onChange={(e) => setJpyAmount(e.target.value.replace(/\D/g, ''))}
-                className="w-10 sm:w-12 bg-transparent border-none text-[10px] sm:text-xs font-bold text-white focus:outline-none focus:ring-0 p-0 tabular-nums"
+                className="w-8 sm:w-12 bg-transparent border-none text-[10px] sm:text-xs font-bold text-white focus:outline-none focus:ring-0 p-0 tabular-nums"
               />
               <div className="h-3 w-px bg-white/10"></div>
-              <span className="text-[10px] sm:text-xs font-bold text-[var(--color-accent-pink)] tabular-nums whitespace-nowrap">
+              <span className="text-[9px] sm:text-xs font-bold text-[var(--color-accent-pink)] tabular-nums whitespace-nowrap">
                 €{exchangeRate ? (parseInt(jpyAmount || 0) * exchangeRate).toFixed(jpyAmount.length > 5 ? 0 : 2) : '...'}
               </span>
             </div>

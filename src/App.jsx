@@ -33,9 +33,12 @@ import {
   Loader2,
   Settings2,
   FileText,
-  ExternalLink
+  ExternalLink,
+  Brain
 } from 'lucide-react';
 import preCreatedGuides from './data/guides.json';
+import KanaPractice from './components/KanaPractice';
+
 
 const AudioGuide = ({ placeName, dayContext, timeContext, apiKey, cachedData, onCacheUpdate }) => {
   const [status, setStatus] = useState(cachedData ? 'done' : 'idle');
@@ -507,6 +510,7 @@ const App = () => {
   const [activePart, setActivePart] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isVocabOpen, setIsVocabOpen] = useState(false);
+  const [isKanaOpen, setIsKanaOpen] = useState(false);
   const [exchangeRate, setExchangeRate] = useState(null);
   const [weather, setWeather] = useState({});
   const [jpyAmount, setJpyAmount] = useState('1000');
@@ -1632,17 +1636,20 @@ const App = () => {
                     <li>• Onegaishimasu</li>
                   </ul>
                 </button>
-                <div className="p-6 rounded-[2rem] bg-blue-50/50 border border-blue-100 group hover:border-blue-200 transition-all">
-                  <div className="w-10 h-10 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
-                    <BookOpen size={20} />
+                <button
+                  onClick={() => setIsKanaOpen(true)}
+                  className="text-left p-6 rounded-[2rem] bg-rose-50/50 border border-rose-100 group hover:border-rose-200 transition-all active:scale-95"
+                >
+                  <div className="w-10 h-10 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-600 mb-4 group-hover:scale-110 transition-transform">
+                    <Brain size={20} />
                   </div>
-                  <h4 className="font-bold text-[var(--color-sumi-black)] mb-2 font-instrument italic">Etiquette</h4>
-                  <ul className="text-xs space-y-2 text-blue-900/60 font-medium">
-                    <li>• No Tipping (Keep it!)</li>
-                    <li>• Shhh on Trains</li>
-                    <li>• Take Trash Home</li>
+                  <h4 className="font-bold text-[var(--color-sumi-black)] mb-2 font-instrument italic">Kana</h4>
+                  <ul className="text-xs space-y-2 text-rose-900/60 font-medium">
+                    <li>• Hiragana Matrix</li>
+                    <li>• Katakana Matrix</li>
+                    <li>• Practice Mode</li>
                   </ul>
-                </div>
+                </button>
               </div>
 
               <div className="pt-8 border-t border-[var(--color-border-light)]">
@@ -2127,6 +2134,12 @@ const App = () => {
           </div>
         )
       }
+
+      {/* Kana Practice Modal */}
+      <KanaPractice 
+        isOpen={isKanaOpen} 
+        onClose={() => setIsKanaOpen(false)} 
+      />
     </div >
   );
 };

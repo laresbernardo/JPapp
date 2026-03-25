@@ -1,0 +1,71 @@
+export const hiraganaData = {
+  basic: [
+    { consonant: '-', vowels: { a: 'あ', i: 'い', u: 'う', e: 'え', o: 'お' } },
+    { consonant: 'k', vowels: { a: 'か', i: 'き', u: 'く', e: 'け', o: 'こ' } },
+    { consonant: 's', vowels: { a: 'さ', i: 'し', u: 'す', e: 'せ', o: 'そ' } },
+    { consonant: 't', vowels: { a: 'た', i: 'ち', u: 'つ', e: 'て', o: 'と' } },
+    { consonant: 'n', vowels: { a: 'な', i: 'に', u: 'ぬ', e: 'ね', o: 'の' } },
+    { consonant: 'h', vowels: { a: 'は', i: 'ひ', u: 'ふ', e: 'へ', o: 'ほ' } },
+    { consonant: 'm', vowels: { a: 'ま', i: 'み', u: 'む', e: 'め', o: 'も' } },
+    { consonant: 'y', vowels: { a: 'や', i: null, u: 'ゆ', e: null, o: 'よ' } },
+    { consonant: 'r', vowels: { a: 'ら', i: 'り', u: 'る', e: 'れ', o: 'ろ' } },
+    { consonant: 'w', vowels: { a: 'わ', i: null, u: null, e: null, o: 'を' } },
+    { consonant: 'n', vowels: { a: null, i: null, u: 'ん', e: null, o: null } },
+  ],
+  dakuon: [
+    { consonant: 'g', vowels: { a: 'が', i: 'ぎ', u: 'ぐ', e: 'げ', o: 'ご' } },
+    { consonant: 'z', vowels: { a: 'ざ', i: 'じ', u: 'ず', e: 'ぜ', o: 'ぞ' } },
+    { consonant: 'd', vowels: { a: 'だ', i: 'ぢ', u: 'づ', e: 'で', o: 'ど' } },
+    { consonant: 'b', vowels: { a: 'ば', i: 'び', u: 'ぶ', e: 'べ', o: 'ぼ' } },
+    { consonant: 'p', vowels: { a: 'ぱ', i: 'ぴ', u: 'ぷ', e: 'ぺ', o: 'ぽ' } },
+  ],
+  yoon: [
+    { romaji: 'kya', kana: 'きゃ' }, { romaji: 'kyu', kana: 'きゅ' }, { romaji: 'kyo', kana: 'きょ' },
+    { romaji: 'sha', kana: 'しゃ' }, { romaji: 'shu', kana: 'しゅ' }, { romaji: 'sho', kana: 'しょ' },
+    { romaji: 'cha', kana: 'ちゃ' }, { romaji: 'chu', kana: 'ちゅ' }, { romaji: 'cho', kana: 'ちょ' },
+    { romaji: 'nya', kana: 'にゃ' }, { romaji: 'nyu', kana: 'にゅ' }, { romaji: 'nyo', kana: 'にょ' },
+    { romaji: 'hya', kana: 'ひゃ' }, { romaji: 'hyu', kana: 'ひゅ' }, { romaji: 'hyo', kana: 'ひょ' },
+    { romaji: 'mya', kana: 'みゃ' }, { romaji: 'myu', kana: 'みゅ' }, { romaji: 'myo', kana: 'みょ' },
+    { romaji: 'rya', kana: 'りゃ' }, { romaji: 'ryu', kana: 'りゅ' }, { romaji: 'ryo', kana: 'りょ' },
+    { romaji: 'gya', kana: 'ぎゃ' }, { romaji: 'gyu', kana: 'ぎゅ' }, { romaji: 'gyo', kana: 'ぎょ' },
+    { romaji: 'ja', kana: 'じゃ' }, { romaji: 'ju', kana: 'じゅ' }, { romaji: 'jo', kana: 'じょ' },
+    { romaji: 'bya', kana: 'びゃ' }, { romaji: 'byu', kana: 'びゅ' }, { romaji: 'byo', kana: 'びょ' },
+    { romaji: 'pya', kana: 'ぴゃ' }, { romaji: 'pyu', kana: 'ぴゅ' }, { romaji: 'pyo', kana: 'ぴょ' },
+  ]
+};
+
+export const katakanaData = {
+  basic: [
+    { consonant: '-', vowels: { a: 'ア', i: 'イ', u: 'ウ', e: 'エ', o: 'オ' } },
+    { consonant: 'k', vowels: { a: 'カ', i: 'キ', u: 'ク', e: 'ケ', o: 'コ' } },
+    { consonant: 's', vowels: { a: 'サ', i: 'シ', u: 'ス', e: 'セ', o: 'ソ' } },
+    { consonant: 't', vowels: { a: 'タ', i: 'チ', u: 'ツ', e: 'テ', o: 'ト' } },
+    { consonant: 'n', vowels: { a: 'ナ', i: 'ニ', u: 'ヌ', e: 'ネ', o: 'ノ' } },
+    { consonant: 'h', vowels: { a: 'ハ', i: 'ヒ', u: 'フ', e: 'ヘ', o: 'ホ' } },
+    { consonant: 'm', vowels: { a: 'マ', i: 'ミ', u: 'ム', e: 'メ', o: 'モ' } },
+    { consonant: 'y', vowels: { a: 'ヤ', i: null, u: 'ユ', e: null, o: 'ヨ' } },
+    { consonant: 'r', vowels: { a: 'ラ', i: 'リ', u: 'ル', e: 'レ', o: 'ロ' } },
+    { consonant: 'w', vowels: { a: 'ワ', i: null, u: null, e: null, o: 'ヲ' } },
+    { consonant: 'n', vowels: { a: null, i: null, u: 'ン', e: null, o: null } },
+  ],
+  dakuon: [
+    { consonant: 'g', vowels: { a: 'ガ', i: 'ギ', u: 'グ', e: 'ゲ', o: 'ゴ' } },
+    { consonant: 'z', vowels: { a: 'ザ', i: 'ジ', u: 'ズ', e: 'ゼ', o: 'ゾ' } },
+    { consonant: 'd', vowels: { a: 'ダ', i: 'ヂ', u: 'ヅ', e: 'デ', o: 'ド' } },
+    { consonant: 'b', vowels: { a: 'バ', i: 'ビ', u: 'ブ', e: 'ベ', o: 'ボ' } },
+    { consonant: 'p', vowels: { a: 'パ', i: 'ピ', u: 'プ', e: 'ペ', o: 'ポ' } },
+  ],
+  yoon: [
+    { romaji: 'kya', kana: 'キャ' }, { romaji: 'kyu', kana: 'キュ' }, { romaji: 'kyo', kana: 'キョ' },
+    { romaji: 'sha', kana: 'シャ' }, { romaji: 'shu', kana: 'シュ' }, { romaji: 'sho', kana: 'ショ' },
+    { romaji: 'cha', kana: 'チャ' }, { romaji: 'chu', kana: 'チュ' }, { romaji: 'cho', kana: 'チョ' },
+    { romaji: 'nya', kana: 'ニャ' }, { romaji: 'nyu', kana: 'ニュ' }, { romaji: 'nyo', kana: 'ニョ' },
+    { romaji: 'hya', kana: 'ヒャ' }, { romaji: 'hyu', kana: 'ヒュ' }, { romaji: 'hyo', kana: 'ヒョ' },
+    { romaji: 'mya', kana: 'ミャ' }, { romaji: 'myu', kana: 'ミュ' }, { romaji: 'myo', kana: 'ミョ' },
+    { romaji: 'rya', kana: 'リャ' }, { romaji: 'ryu', kana: 'リュ' }, { romaji: 'ryo', kana: 'リョ' },
+    { romaji: 'gya', kana: 'ギャ' }, { romaji: 'gyu', kana: 'ギュ' }, { romaji: 'gyo', kana: 'ギョ' },
+    { romaji: 'ja', kana: 'ジャ' }, { romaji: 'ju', kana: 'ジュ' }, { romaji: 'jo', kana: 'ジョ' },
+    { romaji: 'bya', kana: 'ビャ' }, { romaji: 'byu', kana: 'ビュ' }, { romaji: 'byo', kana: 'ビョ' },
+    { romaji: 'pya', kana: 'ピャ' }, { romaji: 'pyu', kana: 'ピュ' }, { romaji: 'pyo', kana: 'ピョ' },
+  ]
+};

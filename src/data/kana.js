@@ -31,7 +31,8 @@ export const hiraganaData = {
     { romaji: 'ja', kana: 'じゃ' }, { romaji: 'ju', kana: 'じゅ' }, { romaji: 'jo', kana: 'じょ' },
     { romaji: 'bya', kana: 'びゃ' }, { romaji: 'byu', kana: 'びゅ' }, { romaji: 'byo', kana: 'びょ' },
     { romaji: 'pya', kana: 'ぴゃ' }, { romaji: 'pyu', kana: 'ぴゅ' }, { romaji: 'pyo', kana: 'ぴょ' },
-  ]
+  ],
+  extended: []
 };
 
 export const katakanaData = {
@@ -67,5 +68,14 @@ export const katakanaData = {
     { romaji: 'ja', kana: 'ジャ' }, { romaji: 'ju', kana: 'ジュ' }, { romaji: 'jo', kana: 'ジョ' },
     { romaji: 'bya', kana: 'ビャ' }, { romaji: 'byu', kana: 'ビュ' }, { romaji: 'byo', kana: 'ビョ' },
     { romaji: 'pya', kana: 'ピャ' }, { romaji: 'pyu', kana: 'ピュ' }, { romaji: 'pyo', kana: 'ピョ' },
+  ],
+  extended: [
+    { romaji: 'va', kana: 'ヴァ' }, { romaji: 'vi', kana: 'ヴィ' }, { romaji: 'vu', kana: 'ヴ' }, { romaji: 've', kana: 'ヴェ' }, { romaji: 'vo', kana: 'ヴォ' },
+    { romaji: 'fa', kana: 'ファ' }, { romaji: 'fi', kana: 'フィ' }, { romaji: 'fe', kana: 'フェ' }, { romaji: 'fo', kana: 'フォ' },
+    { romaji: 'ti', kana: 'ティ' }, { romaji: 'di', kana: 'ディ' },
+    { romaji: 'tu', kana: 'トゥ' }, { romaji: 'du', kana: 'ドゥ' },
+    { romaji: 'che', kana: 'チェ' }, { romaji: 'she', kana: 'シェ' }, { romaji: 'je', kana: 'ジェ' },
+    { romaji: 'wi', kana: 'ウィ' }, { romaji: 'we', kana: 'ウェ' },
+    { romaji: 'tsa', kana: 'ツァ' }, { romaji: 'tsi', kana: 'ツィ' }, { romaji: 'tse', kana: 'ツェ' }, { romaji: 'tso', kana: 'ツォ' }
   ]
 };
